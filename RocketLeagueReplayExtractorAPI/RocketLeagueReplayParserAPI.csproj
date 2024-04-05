@@ -1,0 +1,19 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\DNA-Rocket-League-Replay-Parser\DNARocketLeagueReplayParser\DNARocketLeagueReplayParser.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="DNARocketLeagueReplayParser">
+      <HintPath>..\..\DNA-Rocket-League-Replay-Parser\DNARocketLeagueReplayParser\bin\Debug\net8.0\DNARocketLeagueReplayParser.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
+</Project>
