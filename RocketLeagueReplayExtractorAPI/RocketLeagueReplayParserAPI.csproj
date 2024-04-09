@@ -1,15 +1,24 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
-  </PropertyGroup>
+	<PropertyGroup>
+		<TargetFramework>net8.0</TargetFramework>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+		<PackageId>RocketLeagueReplayParserAPI</PackageId>
+		<Version>1.0.1</Version>
+		<Authors>MrDNA</Authors>
+		<Company>NanoDNA Studios</Company>
 
-  <ItemGroup>
-    <Reference Include="DNARocketLeagueReplayParser">
-      <HintPath>..\..\DNA-Rocket-League-Replay-Parser\DNARocketLeagueReplayParser\bin\Debug\net8.0\DNARocketLeagueReplayParser.dll</HintPath>
-    </Reference>
-  </ItemGroup>
+	</PropertyGroup>
+
+	<ItemGroup>
+	  <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<Reference Include="DNARocketLeagueReplayParser">
+			<HintPath>..\..\DNA-Rocket-League-Replay-Parser\DNARocketLeagueReplayParser\bin\Debug\net8.0\DNARocketLeagueReplayParser.dll</HintPath>
+		</Reference>
+	</ItemGroup>
 
 </Project>

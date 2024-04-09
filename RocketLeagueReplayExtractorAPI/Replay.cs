@@ -1,6 +1,11 @@
 ﻿
 using DNARocketLeagueReplayParser.ReplayStructure;
+using DNARocketLeagueReplayParser.ReplayStructure.Actors;
+using DNARocketLeagueReplayParser.ReplayStructure.Frames;
 using DNARocketLeagueReplayParser.ReplayStructure.Mapping;
+using DNARocketLeagueReplayParser.ReplayStructure.UnrealEngineObjects;
+using Newtonsoft.Json;
+using System.Xml.Linq;
 
 
 namespace RocketLeagueReplayParserAPI
@@ -70,10 +75,16 @@ namespace RocketLeagueReplayParserAPI
         /// </summary>
         public string ReplayName => TryGetProperty(REPLAY_NAME, UNNAMED_REPLAY);
 
+        public Dictionary<uint, string> ActorIDToName;
+
+        public List<GameObjectState> BallPosition = new List<GameObjectState>();
+
+        public Dictionary<string, List<GameObjectState>> CarPositions = new Dictionary<string, List<GameObjectState>>();
+
         /// <summary>
         /// Initializes the Replay Object from the given Path
         /// </summary>
-        /// <param name="path"></param>
+        /// <param name="path"> The Path to the Replay File </param>
         public Replay(string path)
         {
             _pathToFile = path;
@@ -81,7 +92,10 @@ namespace RocketLeagueReplayParserAPI
             using (BinaryReader reader = new BinaryReader(stream))
                 _replayInfo = PsyonixReplay.Deserialize(reader);
 
-            ExtractPlayers();
+            Players = ExtractPlayers();
+            ActorIDToName = GetActorToPlayerMap();
+
+            ExtractRigidBodies();
         }
 
         /// <summary>
@@ -102,39 +116,36 @@ namespace RocketLeagueReplayParserAPI
         /// <summary>
         /// Extracts the Players from the Replay Info Object and Formats them into PlayerInfo Objects
         /// </summary>
-        private void ExtractPlayers()
+        private PlayerInfo[] ExtractPlayers()
         {
-            int playerID = 0;
-
             ArrayProperty playerStatsArray = (ArrayProperty)_replayInfo.Properties[PLAYER_STATS];
             List<PropertyDictionary> playerStats = (List<PropertyDictionary>)playerStatsArray.Value;
-
-            Players = new PlayerInfo[playerStats.Count];
+            List<PlayerInfo> players = new List<PlayerInfo>();
 
             foreach (PropertyDictionary playerStat in playerStats)
-            {
-                Players[playerID] = new PlayerInfo(playerStat);
-                playerID++;
-            }
+                players.Add(new PlayerInfo(playerStat));
+
+            return players.ToArray();
         }
 
         /// <summary>
-        /// Gets the Number of Saves for a Team
+        /// Gets the Teams Stat Value 
         /// </summary>
-        /// <param name="blueTeam"> Flag indicating if the Team to get is Blue </param>
-        /// <returns> The Number of Saves for the Team </returns>
-        public int GetTeamSaves(bool blueTeam)
+        /// <param name="blueTeam"> Flag determining if the Total stats should be from the Blue Team or not </param>
+        /// <param name="stat"> The Game Stat of Interest </param>
+        /// <returns> The Teams Stat Value </returns>
+        public int GetTeamStat(bool blueTeam, GameStats stat)
         {
             int teamID = blueTeam ? BLUE_TEAM : ORANGE_TEAM;
-            int saves = 0;
+            int statValue = 0;
 
             foreach (PlayerInfo player in Players)
             {
                 if (player.Team == teamID)
-                    saves += player.Saves;
+                    statValue += player.GetStat(stat);
             }
 
-            return saves;
+            return statValue;
         }
 
         /// <summary>
@@ -143,7 +154,7 @@ namespace RocketLeagueReplayParserAPI
         /// <param name="renamedName"> The new Name of the File, if left empty it defaults to the Name of the Replay </param>
         /// <param name="savePath"> The New Save Path of the Replay, if left Empty it saves in the Same Directory </param>
         /// <exception cref="DirectoryNotFoundException"> Error thrown if the new Directory doesn't exist </exception>
-        public void RenameAndSave (string? renamedName = null, string? savePath = null)
+        public void RenameAndSave(string? renamedName = null, string? savePath = null)
         {
             if (string.IsNullOrEmpty(savePath))
                 savePath = Path.GetDirectoryName(_pathToFile);
@@ -155,7 +166,394 @@ namespace RocketLeagueReplayParserAPI
                 throw new DirectoryNotFoundException("The Directory to Save the Replay to does not exist");
 
             string newPath = Path.Combine(savePath, renamedName + ".replay");
-            File.WriteAllText(newPath, File.ReadAllText(_pathToFile));
+            File.WriteAllBytes(newPath, File.ReadAllBytes(_pathToFile));
         }
+
+        /// <summary>
+        /// Gets the Replay Files Name on the Device
+        /// </summary>
+        /// <returns> The File Name stored on the Device </returns>
+        public string GetReplayFileName()
+        {
+            return Path.GetFileName(_pathToFile);
+        }
+
+        /// <summary>
+        /// Gets the Team Scoreboard Array for the given Team
+        /// </summary>
+        /// <param name="isBlueTeam"> Flag indicating if the Team is Blue or not </param>
+        /// <returns> An Array with the Teams cumulative stats formmated like the In Game Player Scoreboard </returns>
+        public string[] GetTeamScoreboard(bool isBlueTeam)
+        {
+            return [GetTeamStat(isBlueTeam, GameStats.Score).ToString(), GetTeamStat(isBlueTeam, GameStats.Goals).ToString(), GetTeamStat(isBlueTeam, GameStats.Assists).ToString(), GetTeamStat(isBlueTeam, GameStats.Saves).ToString(), GetTeamStat(isBlueTeam, GameStats.Shots).ToString()];
+        }
+
+        /// <summary>
+        /// Saves the Psyonix Replay Object as a JSON File
+        /// </summary>
+        /// <param name="name"> The Name of the JSON File, if left empty it defaults to the Replay Name </param>
+        /// <param name="savePath"> The Save Path for the JSON File </param>
+        public void SavePsyonixReplayAsJSON(string? name = null, string? savePath = null)
+        {
+            JsonSerializerSettings settings = new JsonSerializerSettings
+            {
+                ReferenceLoopHandling = ReferenceLoopHandling.Ignore,
+                Formatting = Formatting.Indented,
+            };
+
+            string fullFilePath;
+
+            if (string.IsNullOrEmpty(savePath))
+                fullFilePath = Path.GetDirectoryName(_pathToFile);
+            else
+                fullFilePath = Path.GetFullPath(savePath);
+
+            if (!Directory.Exists(fullFilePath))
+                throw new DirectoryNotFoundException("The Directory does not exist");
+
+            if (name == null)
+                fullFilePath = Path.Combine(fullFilePath, $"{ReplayName}.json");
+            else
+                fullFilePath = Path.Combine(fullFilePath, $"{name}.json");
+
+            string json = JsonConvert.SerializeObject(_replayInfo, settings);
+            File.WriteAllText(fullFilePath, json);
+        }
+
+        public void SaveReplayAsJSON(string? name = null, string? savePath = null)
+        {
+            JsonSerializerSettings settings = new JsonSerializerSettings
+            {
+                ReferenceLoopHandling = ReferenceLoopHandling.Ignore,
+                Formatting = Formatting.Indented,
+            };
+
+            string fullFilePath;
+
+            if (string.IsNullOrEmpty(savePath))
+                fullFilePath = Path.GetDirectoryName(_pathToFile);
+            else
+                fullFilePath = Path.GetFullPath(savePath);
+
+            if (!Directory.Exists(fullFilePath))
+                throw new DirectoryNotFoundException("The Directory does not exist");
+
+            if (name == null)
+                fullFilePath = Path.Combine(fullFilePath, $"{ReplayName}.json");
+            else
+                fullFilePath = Path.Combine(fullFilePath, $"{name}.json");
+
+            string json = JsonConvert.SerializeObject(this, settings);
+            File.WriteAllText(fullFilePath, json);
+        }
+
+        public struct GameObjectState
+        {
+            /// <summary>
+            /// Rigid Body State of the Object
+            /// </summary>
+            public RigidBodyState RigidBody { get; set; }
+
+            /// <summary>
+            /// The Frame Number the Object is in
+            /// </summary>
+            public int FrameNumber { get; set; }
+
+            /// <summary>
+            /// The Time in the Match the Object is in
+            /// </summary>
+            public float Time { get; set; }
+
+            /// <summary>
+            /// The Actor ID of the Object, for Players only
+            /// </summary>
+            public uint ActorID { get; set; }
+        }
+
+
+        public (int blueTouch, int orangeTouch) GetBallTouches()
+        {
+            int blueTeamTouches = 0;
+            int orangeTeamTouches = 0;
+
+            int count = 0;
+            GameObjectState lastState = BallPosition[0];
+            foreach (GameObjectState ballState in BallPosition)
+            {
+                if (count != 0)
+                {
+                    float xDistance = ballState.RigidBody.Position.X - lastState.RigidBody.Position.X;
+                    float yDistance = ballState.RigidBody.Position.Y - lastState.RigidBody.Position.Y;
+                    float zDistance = ballState.RigidBody.Position.Z - lastState.RigidBody.Position.Z;
+
+                    float distance = (float)Math.Sqrt(xDistance * xDistance + yDistance * yDistance + zDistance * zDistance);
+
+                    int frameDifference = ballState.FrameNumber - lastState.FrameNumber;
+
+                    if (distance > 200)
+                        Console.WriteLine($"Distance: {distance}  Frame Difference: {frameDifference}");
+                }
+                count++;
+                lastState = ballState;
+            }
+
+
+
+
+
+            foreach (GameObjectState ballState in BallPosition)
+            {
+                foreach (GameObjectState carState in CarPositions["MyTyranosaur"])
+                {
+                    if (ballState.FrameNumber == carState.FrameNumber)
+                    {
+                        //Console.WriteLine($"Car Position: {carState.RigidBody.Position.ToString()}");
+                        //Console.WriteLine($"Ball Position: {ballState.RigidBody.Position.ToString()}");
+
+
+
+                        float xDistance = carState.RigidBody.Position.X - ballState.RigidBody.Position.X;
+                        float yDistance = carState.RigidBody.Position.Y - ballState.RigidBody.Position.Y;
+                        float zDistance = carState.RigidBody.Position.Z - ballState.RigidBody.Position.Z;
+
+                        float distance = (float)Math.Sqrt(Math.Pow(xDistance, 2) + Math.Pow(yDistance, 2) + Math.Pow(zDistance, 2));
+
+                        if (distance < 300)
+                        {
+                            //Console.WriteLine($"Distance: X : {xDistance}  Y : {yDistance}   Z : {zDistance}");
+                            // Console.WriteLine($"Distance: {distance}");
+                        }
+
+                    }
+
+
+                }
+
+
+            }
+
+
+
+            /*int frameCount = 0;
+            foreach (PsyonixFrame frame in _replayInfo.Frames)
+            {
+                foreach (ActorState actorState in frame.ActorStates)
+                {
+                    foreach (ActorStateProperty property in actorState.Properties.Values)
+                    {
+                        if (property.PropertyName == BALL_HIT)
+                        {
+                            object data = property.Data;
+
+                            if (int.TryParse(data.ToString(), out int teamNum))
+                            {
+                                if (teamNum == 0)
+                                {
+                                    blueTeamTouches++;
+
+
+
+
+
+                                    *//* for (int i = frameCount; i > 0; i--)
+                                     {
+                                         PsyonixFrame playerFindFrame = _replayInfo.Frames[i];
+
+
+                                         foreach (ActorState actorStateFind in playerFindFrame.ActorStates)
+                                         {
+                                             foreach (ActorStateProperty propertyFind in actorStateFind.Properties.Values)
+                                             {
+                                                 if (property.PropertyId == RIGID_BODY)
+                                                 {
+
+                                                     GameObjectState gameObjectState = new GameObjectState
+                                                     {
+                                                         RigidBody = (RigidBodyState)property.Data,
+                                                         FrameNumber = (int)i,
+                                                         Time = playerFindFrame.Time,
+                                                         ActorID = actorStateFind.Id
+                                                     };
+
+                                                     if (_replayInfo.Objects[property.GetClassCache().ObjectIndex] == CAR)
+                                                     {
+                                                         if (carPositions.TryGetValue(ActorIDToName[actorState.Id], out List<GameObjectState> positions))
+                                                             positions.Add(gameObjectState);
+                                                         else
+                                                         {
+                                                             carPositions.Add(ActorIDToName[actorState.Id], new List<GameObjectState>());
+                                                             carPositions[ActorIDToName[actorState.Id]].Add(gameObjectState);
+                                                         }
+                                                     }
+
+                                                 }
+
+                                             }
+                                         }
+                                     }*//*
+
+
+
+                                    Console.WriteLine($"Blue Team Touched the Ball at Frame {frameCount} ({frame.Time})");
+                                }
+                                else
+                                {
+                                    orangeTeamTouches++;
+                                    Console.WriteLine($"Orange Team Touched the Ball at Frame {frameCount} ({frame.Time})");
+                                }
+
+                                foreach (GameObjectState ballState in BallPosition)
+                                {
+                                    foreach (GameObjectState carState in CarPositions["MyTyranosaur"])
+                                    {
+                                        if (ballState.FrameNumber == frameCount && carState.FrameNumber == frameCount)
+                                        {
+                                            //Console.WriteLine($"Car Position: {carState.RigidBody.Position.ToString()}");
+                                            //Console.WriteLine($"Ball Position: {ballState.RigidBody.Position.ToString()}");
+
+
+
+                                            float xDistance = carState.RigidBody.Position.X - ballState.RigidBody.Position.X;
+                                            float yDistance = carState.RigidBody.Position.Y - ballState.RigidBody.Position.Y;
+                                            float zDistance = carState.RigidBody.Position.Z - ballState.RigidBody.Position.Z;
+
+                                            float distance = (float)Math.Sqrt(Math.Pow(xDistance, 2) + Math.Pow(yDistance, 2) + Math.Pow(zDistance, 2));
+
+                                            if (distance < 200)
+                                                Console.WriteLine($"Distance: X : {xDistance}  Y : {yDistance}   Z : {zDistance}");
+                                        }
+
+
+                                    }
+
+
+                                }
+
+                                SaveFrame(frameCount, frame);
+
+                            }
+                            else
+                                Console.WriteLine("Failed to Parse Ball Hit Data");
+
+                        }
+                    }
+                }
+
+                frameCount++;
+            }*/
+
+            return (blueTeamTouches, orangeTeamTouches);
+        }
+
+        private void SaveFrame(int frameNumber, PsyonixFrame frame)
+        {
+            JsonSerializerSettings settings = new JsonSerializerSettings
+            {
+                ReferenceLoopHandling = ReferenceLoopHandling.Ignore,
+                Formatting = Formatting.Indented,
+            };
+
+            string fullFilePath;
+
+            fullFilePath = Path.GetDirectoryName(_pathToFile);
+
+            if (!Directory.Exists(fullFilePath))
+                throw new DirectoryNotFoundException("The Directory does not exist");
+
+            fullFilePath = Path.Combine(fullFilePath, $"{ReplayName}_Frame{frameNumber}.json");
+
+            string json = JsonConvert.SerializeObject(frame, settings);
+            File.WriteAllText(fullFilePath, json);
+        }
+
+
+        /// <summary>
+        /// Extracts the Info necessary to map an Actor / GameObject to a Player Name
+        /// </summary>
+        /// <returns> A Dictionary Map of ActorID to Player Name </returns>
+        private Dictionary<uint, string> GetActorToPlayerMap()
+        {
+            Dictionary<uint, string> ActorToPlayerNameMap = new Dictionary<uint, string>();
+
+            Dictionary<uint, string> IDtoName = new Dictionary<uint, string>();
+
+            Dictionary<uint, int> ActorIDtoNameID = new Dictionary<uint, int>();
+
+            foreach (PsyonixFrame frame in _replayInfo.Frames)
+            {
+                foreach (ActorState actorState in frame.ActorStates)
+                {
+                    foreach (ActorStateProperty property in actorState.Properties.Values)
+                    {
+                        if (property.PropertyName == PLAYER_REPLICATION_INFO)
+                        {
+                            if (!ActorIDtoNameID.ContainsKey(actorState.Id))
+                                ActorIDtoNameID.Add(actorState.Id, ((ActiveActor)property.Data).ActorId);
+                        }
+
+                        if (property.PropertyName == PLAYER_NAME)
+                        {
+                            if (!IDtoName.ContainsKey(actorState.Id))
+                                IDtoName.Add(actorState.Id, (string)property.Data);
+                        }
+                    }
+                }
+            }
+
+            foreach (uint actorID in ActorIDtoNameID.Keys)
+                ActorToPlayerNameMap.Add(actorID, IDtoName[(uint)ActorIDtoNameID[actorID]]);
+
+            return ActorToPlayerNameMap;
+        }
+
+        public void ExtractRigidBodies()
+        {
+            List<GameObjectState> ballPosition = new List<GameObjectState>();
+
+            Dictionary<string, List<GameObjectState>> carPositions = new Dictionary<string, List<GameObjectState>>();
+
+            uint frameNumber = 0;
+
+            foreach (PsyonixFrame frame in _replayInfo.Frames)
+            {
+                frameNumber++;
+                foreach (ActorState actorState in frame.ActorStates)
+                {
+                    foreach (ActorStateProperty property in actorState.Properties.Values)
+                    {
+                        if (property.PropertyId == RIGID_BODY)
+                        {
+
+                            GameObjectState gameObjectState = new GameObjectState
+                            {
+                                RigidBody = (RigidBodyState)property.Data,
+                                FrameNumber = (int)frameNumber,
+                                Time = frame.Time,
+                                ActorID = actorState.Id
+                            };
+
+                            if (_replayInfo.Objects[property.GetClassCache().ObjectIndex] == CAR)
+                            {
+                                if (carPositions.TryGetValue(ActorIDToName[actorState.Id], out List<GameObjectState> positions))
+                                    positions.Add(gameObjectState);
+                                else
+                                {
+                                    carPositions.Add(ActorIDToName[actorState.Id], new List<GameObjectState>());
+                                    carPositions[ActorIDToName[actorState.Id]].Add(gameObjectState);
+                                }
+                            }
+
+                            if (_replayInfo.Objects[property.GetClassCache().ObjectIndex] == BALL)
+                                ballPosition.Add(gameObjectState);
+                        }
+                    }
+                }
+            }
+
+            BallPosition = ballPosition;
+            CarPositions = carPositions;
+        }
+
+
     }
 }
