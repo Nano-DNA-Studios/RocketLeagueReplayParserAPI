@@ -79,7 +79,7 @@ namespace RocketLeagueReplayParserAPI
 
         public List<GameObjectState> BallPosition = new List<GameObjectState>();
 
-        public Dictionary<string, List<GameObjectState>> CarPositions = new Dictionary<string, List<GameObjectState>>();
+        private Dictionary<string, List<GameObjectState>> CarPositions = new Dictionary<string, List<GameObjectState>>();
 
         /// <summary>
         /// Initializes the Replay Object from the given Path
@@ -545,6 +545,7 @@ namespace RocketLeagueReplayParserAPI
 
                             if (_replayInfo.Objects[property.GetClassCache().ObjectIndex] == BALL)
                                 ballPosition.Add(gameObjectState);
+                                
                         }
                     }
                 }
