@@ -81,6 +81,16 @@ namespace RocketLeagueReplayParserAPI
 
         private Dictionary<string, List<GameObjectState>> CarPositions = new Dictionary<string, List<GameObjectState>>();
 
+        public List<BallHit> BallHits = new List<BallHit>();
+
+        public struct BallHit
+        {
+            public float time;
+            public int frameNumber;
+            public int team;
+        }
+
+
         /// <summary>
         /// Initializes the Replay Object from the given Path
         /// </summary>
@@ -297,10 +307,6 @@ namespace RocketLeagueReplayParserAPI
                 lastState = ballState;
             }
 
-
-
-
-
             foreach (GameObjectState ballState in BallPosition)
             {
                 foreach (GameObjectState carState in CarPositions["MyTyranosaur"])
@@ -413,9 +419,7 @@ namespace RocketLeagueReplayParserAPI
 
 
 
-                                            float xDistance = carState.RigidBody.Position.X - ballState.RigidBody.Position.X;
-                                            float yDistance = carState.RigidBody.Position.Y - ballState.RigidBody.Position.Y;
-                                            float zDistance = carState.RigidBody.Position.Z - ballState.RigidBody.Position.Z;
+                                            
 
                                             float distance = (float)Math.Sqrt(Math.Pow(xDistance, 2) + Math.Pow(yDistance, 2) + Math.Pow(zDistance, 2));
 
@@ -506,11 +510,16 @@ namespace RocketLeagueReplayParserAPI
             return ActorToPlayerNameMap;
         }
 
+
+
         public void ExtractRigidBodies()
         {
             List<GameObjectState> ballPosition = new List<GameObjectState>();
 
             Dictionary<string, List<GameObjectState>> carPositions = new Dictionary<string, List<GameObjectState>>();
+
+            List<BallHit> ballHits = new List<BallHit>();
+
 
             uint frameNumber = 0;
 
@@ -521,6 +530,18 @@ namespace RocketLeagueReplayParserAPI
                 {
                     foreach (ActorStateProperty property in actorState.Properties.Values)
                     {
+
+                        if (property.PropertyName == BALL_HIT)
+                        {
+                            byte idk = (byte)property.Data;
+                            int idk2 = idk;
+
+                            ballHits.Add(new BallHit { time = frame.Time, frameNumber = (int)frameNumber, team = idk2 });
+
+                           Console.WriteLine($"Ball Hit: {frameNumber}  {frame.Time} {idk2==0}");
+                        }
+
+
                         if (property.PropertyId == RIGID_BODY)
                         {
 
@@ -553,6 +574,36 @@ namespace RocketLeagueReplayParserAPI
 
             BallPosition = ballPosition;
             CarPositions = carPositions;
+            BallHits = ballHits;
+        }
+
+        private void InterpolateFrames ()
+        {
+            List<GameObjectState> ballPosition = new List<GameObjectState>();
+
+
+
+
+
+        }
+
+        private List<GameObjectState> InterpolateCarPositions (List<GameObjectState> compressedCarPositions)
+        {
+            List<GameObjectState > carPositions = new List<GameObjectState>();
+
+
+            for (int i = 0; i < compressedCarPositions.Count; i ++)
+            {
+                 //if one ahead has a delta larger than 0 we try to resolve it, otherwise we just add the frame
+
+                if (compressedCarPositions[i+1].FrameNumber - compressedCarPositions[i].FrameNumber > 1)
+                {
+                    //Interpolate
+                } else
+                    carPositions.Add(compressedCarPositions[i]);
+            }
+
+            return carPositions;
         }
 
 
