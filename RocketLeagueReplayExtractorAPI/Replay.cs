@@ -36,6 +36,8 @@ namespace RocketLeagueReplayParserAPI
 
         private const string REPLAY_NAME = "ReplayName";
 
+        private const string RECORD_FPS = "RecordFPS";
+
         /// <summary>
         /// The Key for the Blue Team Score
         /// </summary>
@@ -45,6 +47,11 @@ namespace RocketLeagueReplayParserAPI
         /// The Key for the Orange Team Score
         /// </summary>
         private const string ORANGE_TEAM_SCORE = "Team1Score";
+
+        /// <summary>
+        /// The Recording FPS of the Replay
+        /// </summary>
+        public float RecordFPS => TryGetProperty<float>(RECORD_FPS, 30);
 
         /// <summary>
         /// The Replay Info Object
@@ -83,6 +90,7 @@ namespace RocketLeagueReplayParserAPI
         private Dictionary<string, List<GameObjectState>> CarPositions = new Dictionary<string, List<GameObjectState>>();
 
         public List<BallHit> BallHits = new List<BallHit>();
+
 
         public struct BallHit
         {
@@ -258,28 +266,6 @@ namespace RocketLeagueReplayParserAPI
             File.WriteAllText(fullFilePath, json);
         }
 
-        public struct GameObjectState
-        {
-            /// <summary>
-            /// Rigid Body State of the Object
-            /// </summary>
-            public RigidBodyState RigidBody { get; set; }
-
-            /// <summary>
-            /// The Frame Number the Object is in
-            /// </summary>
-            public int FrameNumber { get; set; }
-
-            /// <summary>
-            /// The Time in the Match the Object is in
-            /// </summary>
-            public float Time { get; set; }
-
-            /// <summary>
-            /// The Actor ID of the Object, for Players only
-            /// </summary>
-            public uint ActorID { get; set; }
-        }
 
 
         public (int blueTouch, int orangeTouch) GetBallTouches()
@@ -332,120 +318,8 @@ namespace RocketLeagueReplayParserAPI
                         }
 
                     }
-
-
                 }
-
-
             }
-
-
-
-            /*int frameCount = 0;
-            foreach (PsyonixFrame frame in _replayInfo.Frames)
-            {
-                foreach (ActorState actorState in frame.ActorStates)
-                {
-                    foreach (ActorStateProperty property in actorState.Properties.Values)
-                    {
-                        if (property.PropertyName == BALL_HIT)
-                        {
-                            object data = property.Data;
-
-                            if (int.TryParse(data.ToString(), out int teamNum))
-                            {
-                                if (teamNum == 0)
-                                {
-                                    blueTeamTouches++;
-
-
-
-
-
-                                    *//* for (int i = frameCount; i > 0; i--)
-                                     {
-                                         PsyonixFrame playerFindFrame = _replayInfo.Frames[i];
-
-
-                                         foreach (ActorState actorStateFind in playerFindFrame.ActorStates)
-                                         {
-                                             foreach (ActorStateProperty propertyFind in actorStateFind.Properties.Values)
-                                             {
-                                                 if (property.PropertyId == RIGID_BODY)
-                                                 {
-
-                                                     GameObjectState gameObjectState = new GameObjectState
-                                                     {
-                                                         RigidBody = (RigidBodyState)property.Data,
-                                                         FrameNumber = (int)i,
-                                                         Time = playerFindFrame.Time,
-                                                         ActorID = actorStateFind.Id
-                                                     };
-
-                                                     if (_replayInfo.Objects[property.GetClassCache().ObjectIndex] == CAR)
-                                                     {
-                                                         if (carPositions.TryGetValue(ActorIDToName[actorState.Id], out List<GameObjectState> positions))
-                                                             positions.Add(gameObjectState);
-                                                         else
-                                                         {
-                                                             carPositions.Add(ActorIDToName[actorState.Id], new List<GameObjectState>());
-                                                             carPositions[ActorIDToName[actorState.Id]].Add(gameObjectState);
-                                                         }
-                                                     }
-
-                                                 }
-
-                                             }
-                                         }
-                                     }*//*
-
-
-
-                                    Console.WriteLine($"Blue Team Touched the Ball at Frame {frameCount} ({frame.Time})");
-                                }
-                                else
-                                {
-                                    orangeTeamTouches++;
-                                    Console.WriteLine($"Orange Team Touched the Ball at Frame {frameCount} ({frame.Time})");
-                                }
-
-                                foreach (GameObjectState ballState in BallPosition)
-                                {
-                                    foreach (GameObjectState carState in CarPositions["MyTyranosaur"])
-                                    {
-                                        if (ballState.FrameNumber == frameCount && carState.FrameNumber == frameCount)
-                                        {
-                                            //Console.WriteLine($"Car Position: {carState.RigidBody.Position.ToString()}");
-                                            //Console.WriteLine($"Ball Position: {ballState.RigidBody.Position.ToString()}");
-
-
-
-                                            
-
-                                            float distance = (float)Math.Sqrt(Math.Pow(xDistance, 2) + Math.Pow(yDistance, 2) + Math.Pow(zDistance, 2));
-
-                                            if (distance < 200)
-                                                Console.WriteLine($"Distance: X : {xDistance}  Y : {yDistance}   Z : {zDistance}");
-                                        }
-
-
-                                    }
-
-
-                                }
-
-                                SaveFrame(frameCount, frame);
-
-                            }
-                            else
-                                Console.WriteLine("Failed to Parse Ball Hit Data");
-
-                        }
-                    }
-                }
-
-                frameCount++;
-            }*/
 
             return (blueTeamTouches, orangeTeamTouches);
         }
@@ -512,8 +386,10 @@ namespace RocketLeagueReplayParserAPI
         }
 
 
-
-        public void ExtractRigidBodies()
+        /// <summary>
+        /// Extracts all the Rigid Bodies from the Replay Info Object
+        /// </summary>
+        private void ExtractRigidBodies()
         {
             List<GameObjectState> ballPosition = new List<GameObjectState>();
 
@@ -573,12 +449,12 @@ namespace RocketLeagueReplayParserAPI
                 }
             }
 
-            BallPosition =  InterpolateBallPositions(ballPosition);
+            BallPosition = ReplayInterpolator.InterpolateFrames(ballPosition);
             CarPositions = InterpolateCarPositions(carPositions);
             BallHits = ballHits;
         }
 
-        private List<GameObjectState> InterpolateBallPositions(List<GameObjectState> compressedPositions)
+        /*private List<GameObjectState> InterpolateBallPositions(List<GameObjectState> compressedPositions)
         {
             List<GameObjectState> positions = new List<GameObjectState>();
 
@@ -604,10 +480,13 @@ namespace RocketLeagueReplayParserAPI
                             //Use the same speed and positions
                             for (int j = 1; j < frameDelta; j++)
                             {
+                                RigidBodyState rigidBody = (RigidBodyState)compressedPositions[i].RigidBody.Clone();
+                                rigidBody.Position = ((Vector3D)rigidBody.Position) + (rigidBody.LinearVelocity * (j * (1f / 30f)));
+                                ((Quaternion)rigidBody.Rotation).RotateByAngularVelocity(rigidBody.AngularVelocity, j * (1f / 30f)); //Idk kinda fishy
 
                                 GameObjectState interpolatedState = new GameObjectState
                                 {
-                                    RigidBody = compressedPositions[i].RigidBody,
+                                    RigidBody = rigidBody,
                                     FrameNumber = compressedPositions[i].FrameNumber + j,
                                     Time = compressedPositions[i].Time + (j * (1f / 30f)),
                                     ActorID = compressedPositions[i].ActorID,
@@ -634,7 +513,8 @@ namespace RocketLeagueReplayParserAPI
                                 positions.Add(interpolatedState);
                             }
                         }
-                    } else
+                    }
+                    else
                     {
                         //Set speed to 0 and keep same position
                         for (int j = 1; j < frameDelta; j++)
@@ -659,7 +539,7 @@ namespace RocketLeagueReplayParserAPI
 
             return positions;
 
-        }
+        }*/
 
 
         private Dictionary<string, List<GameObjectState>> InterpolateCarPositions(Dictionary<string, List<GameObjectState>> allCars)
