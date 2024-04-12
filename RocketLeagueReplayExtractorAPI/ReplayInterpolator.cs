@@ -2,6 +2,9 @@
 
 namespace RocketLeagueReplayParserAPI
 {
+    /// <summary>
+    /// Interpolates Frames in a Replay File
+    /// </summary>
     internal class ReplayInterpolator
     {
         /// <summary>
@@ -34,14 +37,14 @@ namespace RocketLeagueReplayParserAPI
             if (rigidBody.AngularVelocity == null)
                 rigidBody.AngularVelocity = Vector3D.Zero;
 
-            if (rigidBody.VelocityKMH < MINIMUM_SPEED_KMH)
+            if (rigidBody.GetVelocityKMH() < MINIMUM_SPEED_KMH)
             {
                 rigidBody.LinearVelocity = Vector3D.Zero;
                 rigidBody.AngularVelocity = Vector3D.Zero;
             }
 
-            rigidBody.Position = ((Vector3D)rigidBody.Position) + (rigidBody.LinearVelocity * interpolatedTimeDelta);
-            ((Quaternion)rigidBody.Rotation).RotateByAngularVelocity(rigidBody.AngularVelocity, interpolatedTimeDelta); //Idk kinda fishy
+            rigidBody.Position = rigidBody.Position + (rigidBody.LinearVelocity * interpolatedTimeDelta);
+            rigidBody.Rotation.RotateByAngularVelocity(rigidBody.AngularVelocity, interpolatedTimeDelta); //Idk kinda fishy
 
             return new GameObjectState(rigidBody, frameNumber, time, actorID);
         }
@@ -61,7 +64,7 @@ namespace RocketLeagueReplayParserAPI
 
                 int frameDelta = states[i + 1].FrameNumber - states[i].FrameNumber;
 
-                if (frameDelta == 1)
+                if (frameDelta <= 1)
                     continue;
 
                 for (int j = 1; j < frameDelta; j++)
@@ -73,9 +76,19 @@ namespace RocketLeagueReplayParserAPI
             return interpolatedStates;
         }
 
+        /// <summary>
+        /// Interpolates the missing Frames / GameObject States in a Dictionary of GameObject States
+        /// </summary>
+        /// <param name="states"> Object States </param>
+        /// <returns> A New Dictionary with all Positions interpolated </returns>
+        public static Dictionary<string, List<GameObjectState>> InterpolateAllFrames(Dictionary<string, List<GameObjectState>> states)
+        {
+            Dictionary<string, List<GameObjectState>> interpolatedStates = new Dictionary<string, List<GameObjectState>>();
 
+            foreach (KeyValuePair<string, List<GameObjectState>> state in states)
+                interpolatedStates.Add(state.Key, InterpolateFrames(state.Value));
 
-
-
+            return interpolatedStates;
+        }
     }
 }

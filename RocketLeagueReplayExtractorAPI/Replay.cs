@@ -87,9 +87,9 @@ namespace RocketLeagueReplayParserAPI
 
         public List<GameObjectState> BallPosition = new List<GameObjectState>();
 
-        private Dictionary<string, List<GameObjectState>> CarPositions = new Dictionary<string, List<GameObjectState>>();
+        public Dictionary<string, List<GameObjectState>> CarPositions = new Dictionary<string, List<GameObjectState>>();
 
-        public List<BallHit> BallHits = new List<BallHit>();
+        public List<BallHit> BallHits { get; set; }
 
 
         public struct BallHit
@@ -421,7 +421,6 @@ namespace RocketLeagueReplayParserAPI
 
                         if (property.PropertyId == RIGID_BODY)
                         {
-
                             GameObjectState gameObjectState = new GameObjectState
                             {
                                 RigidBody = (RigidBodyState)property.Data,
@@ -443,184 +442,14 @@ namespace RocketLeagueReplayParserAPI
 
                             if (_replayInfo.Objects[property.GetClassCache().ObjectIndex] == BALL)
                                 ballPosition.Add(gameObjectState);
-
                         }
                     }
                 }
             }
 
             BallPosition = ReplayInterpolator.InterpolateFrames(ballPosition);
-            CarPositions = InterpolateCarPositions(carPositions);
+            CarPositions = ReplayInterpolator.InterpolateAllFrames(carPositions);
             BallHits = ballHits;
         }
-
-        /*private List<GameObjectState> InterpolateBallPositions(List<GameObjectState> compressedPositions)
-        {
-            List<GameObjectState> positions = new List<GameObjectState>();
-
-            for (int i = 0; i < compressedPositions.Count - 1; i++)
-            {
-                //if one ahead has a delta larger than 0 we try to resolve it, otherwise we just add the frame
-
-                //Add the first frame
-                positions.Add(compressedPositions[i]);
-
-                int frameDelta = compressedPositions[i + 1].FrameNumber - compressedPositions[i].FrameNumber;
-
-                if (frameDelta != 1)
-                {
-                    //Interpolate
-
-                    if (compressedPositions[i].RigidBody.LinearVelocity != null)
-                    {
-                        double speed = (compressedPositions[i].RigidBody.LinearVelocity.Magnitude / 10000) * 3.6;
-
-                        if (speed >= 0.6)
-                        {
-                            //Use the same speed and positions
-                            for (int j = 1; j < frameDelta; j++)
-                            {
-                                RigidBodyState rigidBody = (RigidBodyState)compressedPositions[i].RigidBody.Clone();
-                                rigidBody.Position = ((Vector3D)rigidBody.Position) + (rigidBody.LinearVelocity * (j * (1f / 30f)));
-                                ((Quaternion)rigidBody.Rotation).RotateByAngularVelocity(rigidBody.AngularVelocity, j * (1f / 30f)); //Idk kinda fishy
-
-                                GameObjectState interpolatedState = new GameObjectState
-                                {
-                                    RigidBody = rigidBody,
-                                    FrameNumber = compressedPositions[i].FrameNumber + j,
-                                    Time = compressedPositions[i].Time + (j * (1f / 30f)),
-                                    ActorID = compressedPositions[i].ActorID,
-                                };
-
-                                positions.Add(interpolatedState);
-                            }
-                        }
-                        else
-                        {
-                            //Set speed to 0 and keep same position
-                            for (int j = 1; j < frameDelta; j++)
-                            {
-                                RigidBodyState rigidBody = new RigidBodyState(true, compressedPositions[i].RigidBody.Position, compressedPositions[i].RigidBody.Rotation, new Vector3D(0, 0, 0), new Vector3D(0, 0, 0));
-
-                                GameObjectState interpolatedState = new GameObjectState
-                                {
-                                    RigidBody = rigidBody,
-                                    FrameNumber = compressedPositions[i].FrameNumber + j,
-                                    Time = compressedPositions[i].Time + (j * (1f / 30f)),
-                                    ActorID = compressedPositions[i].ActorID,
-                                };
-
-                                positions.Add(interpolatedState);
-                            }
-                        }
-                    }
-                    else
-                    {
-                        //Set speed to 0 and keep same position
-                        for (int j = 1; j < frameDelta; j++)
-                        {
-                            RigidBodyState rigidBody = new RigidBodyState(true, compressedPositions[i].RigidBody.Position, compressedPositions[i].RigidBody.Rotation, new Vector3D(0, 0, 0), new Vector3D(0, 0, 0));
-
-                            GameObjectState interpolatedState = new GameObjectState
-                            {
-                                RigidBody = rigidBody,
-                                FrameNumber = compressedPositions[i].FrameNumber + j,
-                                Time = compressedPositions[i].Time + (j * (1f / 30f)),
-                                ActorID = compressedPositions[i].ActorID,
-                            };
-
-                            positions.Add(interpolatedState);
-                        }
-                    }
-                }
-            }
-
-            positions.Add(compressedPositions[compressedPositions.Count - 1]);
-
-            return positions;
-
-        }*/
-
-
-        private Dictionary<string, List<GameObjectState>> InterpolateCarPositions(Dictionary<string, List<GameObjectState>> allCars)
-        {
-            Dictionary<string, List<GameObjectState>> carPositions = new Dictionary<string, List<GameObjectState>>();
-
-            foreach (string key in allCars.Keys)
-            {
-                List<GameObjectState> compressedPositions = allCars[key];
-                List<GameObjectState> positions = new List<GameObjectState>();
-
-                for (int i = 0; i < compressedPositions.Count - 1; i++)
-                {
-                    //if one ahead has a delta larger than 0 we try to resolve it, otherwise we just add the frame
-
-                    int frameDelta = compressedPositions[i + 1].FrameNumber - compressedPositions[i].FrameNumber;
-
-                    if (frameDelta > 1)
-                    {
-                        //Interpolate
-
-                        //Add the first frame
-                        positions.Add(compressedPositions[i]);
-
-
-                        double speed = (compressedPositions[i].RigidBody.LinearVelocity.Magnitude / 10000) * 3.6;
-
-                        if (speed >= 0.6)
-                        {
-                            //Use the same speed and positions
-                            for (int j = 1; j < frameDelta; j++)
-                            {
-                                GameObjectState interpolatedState = new GameObjectState
-                                {
-                                    RigidBody = compressedPositions[i].RigidBody,
-                                    FrameNumber = compressedPositions[i].FrameNumber + j,
-                                    Time = compressedPositions[i].Time + (j * (1f / 30f)),
-                                    ActorID = compressedPositions[i].ActorID,
-                                };
-
-                                positions.Add(interpolatedState);
-                            }
-                        }
-                        else
-                        {
-                            //Set speed to 0 and keep same position
-                            for (int j = 1; j < frameDelta; j++)
-                            {
-
-
-                                RigidBodyState rigidBody = new RigidBodyState(true, compressedPositions[i].RigidBody.Position, compressedPositions[i].RigidBody.Rotation, new Vector3D(0, 0, 0), new Vector3D(0, 0, 0));
-
-
-                                GameObjectState interpolatedState = new GameObjectState
-                                {
-                                    RigidBody = rigidBody,
-                                    FrameNumber = compressedPositions[i].FrameNumber + j,
-                                    Time = compressedPositions[i].Time + (j * (1f / 30f)),
-                                    ActorID = compressedPositions[i].ActorID,
-                                };
-
-                                positions.Add(interpolatedState);
-                            }
-                        }
-
-
-
-                    }
-                    else
-                        positions.Add(compressedPositions[i]);
-                }
-
-                positions.Add(compressedPositions[compressedPositions.Count - 1]);
-
-            }
-
-
-
-            return carPositions;
-        }
-
-
     }
 }
