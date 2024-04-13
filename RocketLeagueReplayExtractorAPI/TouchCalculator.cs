@@ -1,15 +1,8 @@
 ﻿using DNARocketLeagueReplayParser.ReplayStructure.UnrealEngineObjects;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Reflection;
-using System.Text;
-using System.Threading.Tasks;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace RocketLeagueReplayParserAPI
 {
-    internal class TouchCalculator
+    public class TouchCalculator
     {
         public List<GameObjectState> BallPosition { get; set; }
 
@@ -54,10 +47,8 @@ namespace RocketLeagueReplayParserAPI
                 if (targetFrame < 0)
                     continue;
 
-                if (!CarPositions.ContainsKey(targetFrame.ToString()))
-                    continue;
-
-                gameObjects.AddRange(CarPositions[targetFrame.ToString()]);
+                if (_carPositionsByFrame.ContainsKey(targetFrame))
+                    gameObjects.AddRange(_carPositionsByFrame[targetFrame]);
             }
 
             return gameObjects;
@@ -82,6 +73,7 @@ namespace RocketLeagueReplayParserAPI
 
             return (minDistance, closestCar);
         }
+
         private double GetMaxAcceleration(int frameNumber)
         {
             List<double> speeds = BallPosition.Skip(frameNumber).Take(4).Select(ball => ball.RigidBody.GetVelocityKMH()).ToList();
@@ -90,22 +82,53 @@ namespace RocketLeagueReplayParserAPI
             return Math.Abs(accelerations.Max());
         }
 
+        /*private List<BallTouch> CleanupBallTouches (List<BallTouch> touches)
+        {
+            List < BallTouch> cleanTouches = new List<BallTouch>();
+
+            for (int i = 0; i < touches.Count; i++)
+            {
+                BallTouch touch = touches[i];
+
+                if (i == 0)
+                {
+                    cleanTouches.Add(touch);
+                    continue;
+                }
+
+                BallTouch lastTouch = touches[i - 1];
+
+                if (touch.Distance > lastTouch.Distance)
+                    continue;
+
+                if (touch.ActorID != lastTouch.ActorID)
+                    continue;
+
+                cleanTouches.Add(touch);
+            })
+
+
+
+
+        }*/
 
         public List<BallTouch> GetBallTouches()
         {
             List<BallTouch> ballTouches = new List<BallTouch>();
 
-            double lastAcceleration = 0;
-            double lastMinDistance = double.MaxValue;
+            double lastMaxAcceleration = 0;
             for (int i = 0; i < BallPosition.Count; i++)
             {
                 GameObjectState ballState = BallPosition[i];
 
                 (double minDistance, GameObjectState closestCar) = GetClosestCar(ballState);
 
-                double maxAcceleration = GetMaxAcceleration(ballState.FrameNumber);
+                if (minDistance > 2.5)
+                    continue;
 
-                if (minDistance > 2.5 || maxAcceleration < 1)
+                double maxAcceleration = GetMaxAcceleration(i);
+
+                if (maxAcceleration < 1)
                     continue;
 
                 BallTouch ballTouch = new BallTouch()
@@ -113,19 +136,29 @@ namespace RocketLeagueReplayParserAPI
                     FrameNumber = ballState.FrameNumber,
                     Time = ballState.Time,
                     ActorID = closestCar.ActorID,
-                    RigidBody = ballState.RigidBody
+                    RigidBody = ballState.RigidBody,
+                    Distance = minDistance
                 };
 
-                if (ballTouches.Count > 1)
+                if (ballTouches.Count > 0 && lastMaxAcceleration == maxAcceleration)
                 {
-                    if (lastAcceleration == maxAcceleration && minDistance < lastMinDistance)
-                        ballTouches.RemoveAt(ballTouches.Count - 1);
-                }
+                    if (minDistance > ballTouches.Last().Distance)
+                        continue;
 
-                ballTouches.Add(ballTouch);
-                lastAcceleration = maxAcceleration;
-                lastMinDistance = minDistance;
+                    ballTouches.RemoveAt(ballTouches.Count - 1);
+                    ballTouches.Add(ballTouch);
+                }
+                else
+                    ballTouches.Add(ballTouch);
+
+                lastMaxAcceleration = maxAcceleration;
             }
+
+            //Cleanup
+
+
+
+
 
             return ballTouches;
         }

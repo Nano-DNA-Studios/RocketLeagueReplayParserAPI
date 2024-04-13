@@ -11,5 +11,7 @@ namespace RocketLeagueReplayParserAPI
         public uint ActorID { get; set; }
 
         public RigidBodyState RigidBody { get; set; }
+
+        public double Distance { get; set; }
     }
 }
