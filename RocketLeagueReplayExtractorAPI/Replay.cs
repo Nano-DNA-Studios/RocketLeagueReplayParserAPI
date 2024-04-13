@@ -5,8 +5,7 @@ using DNARocketLeagueReplayParser.ReplayStructure.Frames;
 using DNARocketLeagueReplayParser.ReplayStructure.Mapping;
 using DNARocketLeagueReplayParser.ReplayStructure.UnrealEngineObjects;
 using Newtonsoft.Json;
-using System.Reflection.Metadata;
-using System.Xml.Linq;
+using System.Security.Cryptography;
 
 
 namespace RocketLeagueReplayParserAPI
@@ -34,6 +33,8 @@ namespace RocketLeagueReplayParserAPI
         private const int RIGID_BODY = 42;
         private const string PLAYER_STATS = "PlayerStats";
 
+        private const string SECONDS_REMAINING = "TAGame.GameEvent_Soccar_TA:SecondsRemaining";
+
         private const string REPLAY_NAME = "ReplayName";
 
         private const string RECORD_FPS = "RecordFPS";
@@ -52,6 +53,11 @@ namespace RocketLeagueReplayParserAPI
         /// The Recording FPS of the Replay
         /// </summary>
         public float RecordFPS => TryGetProperty<float>(RECORD_FPS, 30);
+
+        public float TimeAt300SecondsLeft { get; set; }
+
+        public float MatchLength { get; set; }
+
 
         /// <summary>
         /// The Replay Info Object
@@ -90,7 +96,6 @@ namespace RocketLeagueReplayParserAPI
         public Dictionary<string, List<GameObjectState>> CarPositions = new Dictionary<string, List<GameObjectState>>();
 
         public List<BallHit> BallHits { get; set; }
-
 
         public struct BallHit
         {
@@ -397,8 +402,30 @@ namespace RocketLeagueReplayParserAPI
 
             List<BallHit> ballHits = new List<BallHit>();
 
-
             uint frameNumber = 0;
+
+            float timeAt300SecondsLeft = 0;
+
+            foreach (PsyonixFrame frame in _replayInfo.Frames)
+            {
+                foreach (ActorState actorState in frame.ActorStates)
+                {
+                    foreach (ActorStateProperty property in actorState.Properties.Values)
+                    {
+                        if (property.PropertyName == SECONDS_REMAINING)
+                        {
+                            if ((uint)property.Data == 299)
+                                timeAt300SecondsLeft = frame.Time;
+                        }
+                    }
+                }
+            }
+
+            TimeAt300SecondsLeft = timeAt300SecondsLeft + 1;
+
+
+
+            Console.WriteLine($"Time at 300 Seconds Left: {timeAt300SecondsLeft}");
 
             foreach (PsyonixFrame frame in _replayInfo.Frames)
             {
@@ -445,6 +472,9 @@ namespace RocketLeagueReplayParserAPI
                         }
                     }
                 }
+
+                if (frame.Time > MatchLength)
+                    MatchLength = frame.Time;
             }
 
             BallPosition = ReplayInterpolator.InterpolateFrames(ballPosition);

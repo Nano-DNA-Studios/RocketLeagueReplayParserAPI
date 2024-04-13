@@ -46,7 +46,7 @@ namespace RocketLeagueReplayParserAPI
             rigidBody.Position = rigidBody.Position + (rigidBody.LinearVelocity * interpolatedTimeDelta);
             rigidBody.Rotation.RotateByAngularVelocity(rigidBody.AngularVelocity, interpolatedTimeDelta); //Idk kinda fishy
 
-            return new GameObjectState(rigidBody, frameNumber, time, actorID);
+            return new GameObjectState(rigidBody, frameNumber, time , actorID);
         }
 
         /// <summary>

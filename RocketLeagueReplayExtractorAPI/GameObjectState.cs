@@ -48,5 +48,15 @@ namespace RocketLeagueReplayParserAPI
             Time = time;
             ActorID = actorID;
         }
+
+        /// <summary>
+        /// Gets the Remaining Time in the Match at which the State Occurs
+        /// </summary>
+        /// <param name="matchLength"> The Match Length in Seconds </param>
+        /// <returns> The Remaining time of the before it ends </returns>
+        public float GetRemainingTime (float matchLength)
+        {
+            return matchLength - Time;
+        }
     }
 }
