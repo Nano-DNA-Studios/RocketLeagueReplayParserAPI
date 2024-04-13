@@ -7,16 +7,30 @@ namespace RocketLeagueReplayParserAPI
     /// </summary>
     public class TouchCalculator
     {
+        #region Constants
+        /// <summary>
+        /// The Minimym Distance a Car can be from the Ball to be considered a Touch
+        /// </summary>
         private const double MINIMUM_DISTANCE_FROM_BALL = 2.5;
 
+        /// <summary>
+        /// The Minimum Acceleration the Ball can have to be considered a Touch
+        /// </summary>
         private const double MINIMUM_ACCELERATION = 1;
 
+        /// <summary>
+        /// The Number of Surrounding Frames to Check for Car States
+        /// </summary>
         private const int SURROUNDING_FRAMES = 2;
-
+        
+        /// <summary>
+        /// The Number of Frames to Check for Acceleration
+        /// </summary>
         private const int ACCELERATION_FRAMES = 4;
 
+        #endregion
 
-
+        #region Properties
         /// <summary>
         /// The List of Ball Positions in the Replay File
         /// </summary>
@@ -32,6 +46,9 @@ namespace RocketLeagueReplayParserAPI
         /// </summary>
         private Dictionary<int, List<GameObjectState>> _carPositionsByFrame { get; set; }
 
+        #endregion
+
+        #region Constructors
         /// <summary>
         /// Default Constructor
         /// </summary>
@@ -44,6 +61,10 @@ namespace RocketLeagueReplayParserAPI
 
             SetCarPositionsByFrameDictionary();
         }
+
+        #endregion
+
+        #region Private Methods
 
         /// <summary>
         /// Sets the Dictionary tha reformats Car Positions by Frame Number
@@ -126,6 +147,10 @@ namespace RocketLeagueReplayParserAPI
             return Math.Abs(accelerations.DefaultIfEmpty(0).Max());
         }
 
+        #endregion
+
+        #region Public Methods
+
         /// <summary>
         /// Gets all the Ball Touches that occur in the Replay File
         /// </summary>
@@ -173,5 +198,6 @@ namespace RocketLeagueReplayParserAPI
             return ballTouches;
         }
 
+        #endregion
     }
 }

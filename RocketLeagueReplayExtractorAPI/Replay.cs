@@ -15,28 +15,76 @@ namespace RocketLeagueReplayParserAPI
     /// </summary>
     public class Replay
     {
+        #region Constants
+
+        /// <summary>
+        /// The Blue Team ID
+        /// </summary>
         public const int BLUE_TEAM = 0;
+
+        /// <summary>
+        /// The Orange Team ID
+        /// </summary>
         public const int ORANGE_TEAM = 1;
 
+        /// <summary>
+        /// Zero Goals Scored
+        /// </summary>
         public const int ZERO_GOALS = 0;
 
-
+        /// <summary>
+        /// Title given to Unnamed Replays
+        /// </summary>
         public const string UNNAMED_REPLAY = "Unnamed";
 
-        //Constants
+        /// <summary>
+        /// The Car Object Class Name
+        /// </summary>
         private const string CAR = "TAGame.Car_TA";
+
+        /// <summary>
+        /// The Ball Object Class Name
+        /// </summary>
         private const string BALL = "TAGame.Ball_TA";
+
+        /// <summary>
+        /// The Player Name Property
+        /// </summary>
         private const string PLAYER_NAME = "Engine.PlayerReplicationInfo:PlayerName";
+
+        /// <summary>
+        /// The Player Replication Info Property
+        /// </summary>
         private const string PLAYER_REPLICATION_INFO = "Engine.Pawn:PlayerReplicationInfo";
+
+        /// <summary>
+        /// The Vehicle Property
+        /// </summary>
         private const string VEHICLE = "TAGame.CarComponent_TA:Vehicle";
+
+        /// <summary>
+        /// The Ball Hit Property
+        /// </summary>
         private const string BALL_HIT = "TAGame.Ball_TA:HitTeamNum"; //Or TAGame.GameEvent_Soccar_TA:bBallHasBeenHit
+
+        /// <summary>
+        /// The Rigid Body Property ID
+        /// </summary>
         private const int RIGID_BODY = 42;
+
+        /// <summary>
+        /// The Player Stats Property Name
+        /// </summary>
         private const string PLAYER_STATS = "PlayerStats";
 
-        private const string SECONDS_REMAINING = "TAGame.GameEvent_Soccar_TA:SecondsRemaining";
-
+        /// <summary>
+        /// The Replay Name Property Name
+        /// </summary>
         private const string REPLAY_NAME = "ReplayName";
 
+        /// <summary>
+        /// The Record FPS Property Name
+        /// </summary>
         private const string RECORD_FPS = "RecordFPS";
 
         /// <summary>
@@ -49,13 +97,17 @@ namespace RocketLeagueReplayParserAPI
         /// </summary>
         private const string ORANGE_TEAM_SCORE = "Team1Score";
 
+        #endregion
+
         /// <summary>
         /// The Recording FPS of the Replay
         /// </summary>
         public float RecordFPS => TryGetProperty<float>(RECORD_FPS, 30);
 
-        public float MatchLength { get; set; }
-
+        /// <summary>
+        /// The Length of the Match in Seconds
+        /// </summary>
+        public float MatchLength { get; private set; }
 
         /// <summary>
         /// The Replay Info Object
@@ -101,14 +153,6 @@ namespace RocketLeagueReplayParserAPI
         /// Dictionary of all the Car States in the Replay
         /// </summary>
         public Dictionary<string, List<GameObjectState>> CarPositions { get; private set; }
-
-        public struct BallHit
-        {
-            public float time;
-            public int frameNumber;
-            public int team;
-        }
-
 
         /// <summary>
         /// Initializes the Replay Object from the given Path
@@ -249,6 +293,12 @@ namespace RocketLeagueReplayParserAPI
             File.WriteAllText(fullFilePath, json);
         }
 
+        /// <summary>
+        /// Saves the Current <see cref="Replay"/> Object as a JSON File
+        /// </summary>
+        /// <param name="name"> The Name of the File </param>
+        /// <param name="savePath"> The Path to Save the <see cref="Replay"/> Object </param>
+        /// <exception cref="DirectoryNotFoundException"> Error thrown if the Directory doesn't exist </exception>
         public void SaveReplayAsJSON(string? name = null, string? savePath = null)
         {
             JsonSerializerSettings settings = new JsonSerializerSettings
@@ -334,6 +384,12 @@ namespace RocketLeagueReplayParserAPI
             return (blueTeamTouches, orangeTeamTouches);
         }
 
+        /// <summary>
+        /// Saves an Individual Frame of the Replay as a JSON File
+        /// </summary>
+        /// <param name="frameNumber"></param>
+        /// <param name="frame"></param>
+        /// <exception cref="DirectoryNotFoundException"></exception>
         private void SaveFrame(int frameNumber, PsyonixFrame frame)
         {
             JsonSerializerSettings settings = new JsonSerializerSettings
