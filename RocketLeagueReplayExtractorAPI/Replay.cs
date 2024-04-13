@@ -54,8 +54,6 @@ namespace RocketLeagueReplayParserAPI
         /// </summary>
         public float RecordFPS => TryGetProperty<float>(RECORD_FPS, 30);
 
-        public float TimeAt300SecondsLeft { get; set; }
-
         public float MatchLength { get; set; }
 
 
@@ -89,13 +87,20 @@ namespace RocketLeagueReplayParserAPI
         /// </summary>
         public string ReplayName => TryGetProperty(REPLAY_NAME, UNNAMED_REPLAY);
 
-        public Dictionary<uint, string> ActorIDToName;
+        /// <summary>
+        /// Mapping of Actor ID to Player Name
+        /// </summary>
+        public Dictionary<uint, string> ActorIDToName { get; private set; }
 
-        public List<GameObjectState> BallPosition = new List<GameObjectState>();
+        /// <summary>
+        /// List of all the Balls State in the Replay
+        /// </summary>
+        public List<GameObjectState> BallPosition { get; private set; }
 
-        public Dictionary<string, List<GameObjectState>> CarPositions = new Dictionary<string, List<GameObjectState>>();
-
-        public List<BallHit> BallHits { get; set; }
+        /// <summary>
+        /// Dictionary of all the Car States in the Replay
+        /// </summary>
+        public Dictionary<string, List<GameObjectState>> CarPositions { get; private set; }
 
         public struct BallHit
         {
@@ -397,35 +402,8 @@ namespace RocketLeagueReplayParserAPI
         private void ExtractRigidBodies()
         {
             List<GameObjectState> ballPosition = new List<GameObjectState>();
-
             Dictionary<string, List<GameObjectState>> carPositions = new Dictionary<string, List<GameObjectState>>();
-
-            List<BallHit> ballHits = new List<BallHit>();
-
             uint frameNumber = 0;
-
-            float timeAt300SecondsLeft = 0;
-
-            foreach (PsyonixFrame frame in _replayInfo.Frames)
-            {
-                foreach (ActorState actorState in frame.ActorStates)
-                {
-                    foreach (ActorStateProperty property in actorState.Properties.Values)
-                    {
-                        if (property.PropertyName == SECONDS_REMAINING)
-                        {
-                            if ((uint)property.Data == 299)
-                                timeAt300SecondsLeft = frame.Time;
-                        }
-                    }
-                }
-            }
-
-            TimeAt300SecondsLeft = timeAt300SecondsLeft + 1;
-
-
-
-            Console.WriteLine($"Time at 300 Seconds Left: {timeAt300SecondsLeft}");
 
             foreach (PsyonixFrame frame in _replayInfo.Frames)
             {
@@ -434,18 +412,6 @@ namespace RocketLeagueReplayParserAPI
                 {
                     foreach (ActorStateProperty property in actorState.Properties.Values)
                     {
-
-                        if (property.PropertyName == BALL_HIT)
-                        {
-                            byte idk = (byte)property.Data;
-                            int idk2 = idk;
-
-                            ballHits.Add(new BallHit { time = frame.Time, frameNumber = (int)frameNumber, team = idk2 });
-
-                            Console.WriteLine($"Ball Hit: {frameNumber}  {frame.Time} {idk2 == 0}");
-                        }
-
-
                         if (property.PropertyId == RIGID_BODY)
                         {
                             GameObjectState gameObjectState = new GameObjectState
@@ -479,7 +445,6 @@ namespace RocketLeagueReplayParserAPI
 
             BallPosition = ReplayInterpolator.InterpolateFrames(ballPosition);
             CarPositions = ReplayInterpolator.InterpolateAllFrames(carPositions);
-            BallHits = ballHits;
         }
     }
 }

@@ -2,15 +2,41 @@
 
 namespace RocketLeagueReplayParserAPI
 {
+    /// <summary>
+    /// A Class that Calculates all the Ball Touches that occur in the Replay File
+    /// </summary>
     public class TouchCalculator
     {
+        private const double MINIMUM_DISTANCE_FROM_BALL = 2.5;
+
+        private const double MINIMUM_ACCELERATION = 1;
+
+        private const int SURROUNDING_FRAMES = 2;
+
+        private const int ACCELERATION_FRAMES = 4;
+
+
+
+        /// <summary>
+        /// The List of Ball Positions in the Replay File
+        /// </summary>
         public List<GameObjectState> BallPosition { get; set; }
 
+        /// <summary>
+        /// The List of Car Positions in the Replay File
+        /// </summary>
         public Dictionary<string, List<GameObjectState>> CarPositions { get; set; }
 
+        /// <summary>
+        /// Refromated Car Positions by Frame Number
+        /// </summary>
         private Dictionary<int, List<GameObjectState>> _carPositionsByFrame { get; set; }
 
-
+        /// <summary>
+        /// Default Constructor
+        /// </summary>
+        /// <param name="ballPosition"> The Ball Positions </param>
+        /// <param name="carPositions"> The Car Positions </param>
         public TouchCalculator(List<GameObjectState> ballPosition, Dictionary<string, List<GameObjectState>> carPositions)
         {
             BallPosition = ballPosition;
@@ -19,6 +45,9 @@ namespace RocketLeagueReplayParserAPI
             SetCarPositionsByFrameDictionary();
         }
 
+        /// <summary>
+        /// Sets the Dictionary tha reformats Car Positions by Frame Number
+        /// </summary>
         private void SetCarPositionsByFrameDictionary()
         {
             Dictionary<int, List<GameObjectState>> carPositionsByFrame = new Dictionary<int, List<GameObjectState>>();
@@ -37,11 +66,16 @@ namespace RocketLeagueReplayParserAPI
             _carPositionsByFrame = carPositionsByFrame;
         }
 
+        /// <summary>
+        /// Gets the Car States that are Closest in the Surrounds Frames of the current Ball State
+        /// </summary>
+        /// <param name="frameNumber"> The Frame Number of the Ball State </param>
+        /// <returns> A List of all the States of the Cars in the Surrounding Frames </returns>
         private List<GameObjectState> GetCarStates(int frameNumber)
         {
             List<GameObjectState> gameObjects = new List<GameObjectState>();
 
-            for (int i = -2; i <= 2; i++)
+            for (int i = -SURROUNDING_FRAMES; i <= SURROUNDING_FRAMES; i++)
             {
                 int targetFrame = frameNumber + i;
                 if (targetFrame < 0)
@@ -54,6 +88,11 @@ namespace RocketLeagueReplayParserAPI
             return gameObjects;
         }
 
+        /// <summary>
+        /// Gets the Closest Car and it's Distance to the Ball
+        /// </summary>
+        /// <param name="ballState"> The Ball State to get the Closest Car to </param>
+        /// <returns> A Tuple with the closest Distance to the Ball and the Closest Cars State </returns>
         private (double minDistance, GameObjectState closestCar) GetClosestCar(GameObjectState ballState)
         {
             List<GameObjectState> closestCars = GetCarStates(ballState.FrameNumber);
@@ -74,44 +113,23 @@ namespace RocketLeagueReplayParserAPI
             return (minDistance, closestCar);
         }
 
-        private double GetMaxAcceleration(int frameNumber)
+        /// <summary>
+        /// Gets the Max Acceleration of the Ball in the following Frames
+        /// </summary>
+        /// <param name="index"> The Index of the Ball State to Start at </param>
+        /// <returns> The Maximum Acceleration Values in the next few Frames </returns>
+        private double GetMaxAcceleration(int index)
         {
-            List<double> speeds = BallPosition.Skip(frameNumber).Take(4).Select(ball => ball.RigidBody.GetVelocityKMH()).ToList();
+            List<double> speeds = BallPosition.Skip(index).Take(ACCELERATION_FRAMES).Select(ball => ball.RigidBody.GetVelocityKMH()).ToList();
             List<double> accelerations = speeds.Skip(1).Zip(speeds, (first, second) => first - second).ToList();
 
-            return Math.Abs(accelerations.Max());
+            return Math.Abs(accelerations.DefaultIfEmpty(0).Max());
         }
 
-        /*private List<BallTouch> CleanupBallTouches (List<BallTouch> touches)
-        {
-            List < BallTouch> cleanTouches = new List<BallTouch>();
-
-            for (int i = 0; i < touches.Count; i++)
-            {
-                BallTouch touch = touches[i];
-
-                if (i == 0)
-                {
-                    cleanTouches.Add(touch);
-                    continue;
-                }
-
-                BallTouch lastTouch = touches[i - 1];
-
-                if (touch.Distance > lastTouch.Distance)
-                    continue;
-
-                if (touch.ActorID != lastTouch.ActorID)
-                    continue;
-
-                cleanTouches.Add(touch);
-            })
-
-
-
-
-        }*/
-
+        /// <summary>
+        /// Gets all the Ball Touches that occur in the Replay File
+        /// </summary>
+        /// <returns> A List of all the Ball Touches that Occur in the Replay </returns>
         public List<BallTouch> GetBallTouches()
         {
             List<BallTouch> ballTouches = new List<BallTouch>();
@@ -120,15 +138,13 @@ namespace RocketLeagueReplayParserAPI
             for (int i = 0; i < BallPosition.Count; i++)
             {
                 GameObjectState ballState = BallPosition[i];
-
                 (double minDistance, GameObjectState closestCar) = GetClosestCar(ballState);
-
-                if (minDistance > 2.5)
-                    continue;
-
                 double maxAcceleration = GetMaxAcceleration(i);
 
-                if (maxAcceleration < 1)
+                if (minDistance > MINIMUM_DISTANCE_FROM_BALL)
+                    continue;
+
+                if (maxAcceleration < MINIMUM_ACCELERATION)
                     continue;
 
                 BallTouch ballTouch = new BallTouch()
@@ -153,12 +169,6 @@ namespace RocketLeagueReplayParserAPI
 
                 lastMaxAcceleration = maxAcceleration;
             }
-
-            //Cleanup
-
-
-
-
 
             return ballTouches;
         }
