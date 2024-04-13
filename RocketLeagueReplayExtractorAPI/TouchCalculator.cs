@@ -96,7 +96,7 @@ namespace RocketLeagueReplayParserAPI
             List<BallTouch> ballTouches = new List<BallTouch>();
 
             double lastAcceleration = 0;
-            double lastMinDistance = 0;
+            double lastMinDistance = double.MaxValue;
             for (int i = 0; i < BallPosition.Count; i++)
             {
                 GameObjectState ballState = BallPosition[i];
@@ -105,10 +105,7 @@ namespace RocketLeagueReplayParserAPI
 
                 double maxAcceleration = GetMaxAcceleration(ballState.FrameNumber);
 
-                if (minDistance > 2.5)
-                    continue;
-
-                if (maxAcceleration < 1)
+                if (minDistance > 2.5 || maxAcceleration < 1)
                     continue;
 
                 BallTouch ballTouch = new BallTouch()
@@ -121,10 +118,7 @@ namespace RocketLeagueReplayParserAPI
 
                 if (ballTouches.Count > 1)
                 {
-                    if (lastAcceleration == maxAcceleration)
-                        continue;
-
-                    if (minDistance < lastMinDistance)
+                    if (lastAcceleration == maxAcceleration && minDistance < lastMinDistance)
                         ballTouches.RemoveAt(ballTouches.Count - 1);
                 }
 
@@ -133,25 +127,8 @@ namespace RocketLeagueReplayParserAPI
                 lastMinDistance = minDistance;
             }
 
-
-
-
-
-
-
-
-
             return ballTouches;
         }
-
-
-
-
-
-
-
-
-
 
     }
 }
