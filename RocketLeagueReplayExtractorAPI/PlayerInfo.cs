@@ -15,7 +15,6 @@ namespace RocketLeagueReplayParserAPI
         private const string SHOTS = "Shots";
         private const string TEAM = "Team";
 
-
         /// <summary>
         /// The ID assigned to the Player at the Start of the Match
         /// </summary>
@@ -53,9 +52,34 @@ namespace RocketLeagueReplayParserAPI
 
         //0 = Blue, 1 = Orange
         /// <summary>
-        /// The Team ID the Player is on
+        /// The Team ID the Player is on. 0 = Blue, 1 = Orange
         /// </summary>
         public int Team { get; private set; }
+
+        /// <summary>
+        /// The Number of Touches the Player got
+        /// </summary>
+        public int Touches => BallTouches.Count;
+
+        /// <summary>
+        /// List of all the Ball Touches the Player got with their Info
+        /// </summary>
+        public List<BallTouch> BallTouches { get; private set; }
+
+        /// <summary>
+        /// The Percentage of Touches the Player got on the Ball compared to all Players
+        /// </summary>
+        public float BallTouchPossessionPercentage { get; internal set; }
+
+        /// <summary>
+        /// The Time the Player Possessed the Ball
+        /// </summary>
+        public float BallPossessionTime { get; internal set; }
+
+        /// <summary>
+        /// The Percentage of Time the Player Possessed the Ball compared to all Players
+        /// </summary>
+        public float BallPossessionPercentage { get; internal set; }
 
 
         //Eventually support
@@ -75,6 +99,7 @@ namespace RocketLeagueReplayParserAPI
         {
             PlayerID = playerID;
             PlayerName = playerName;
+            BallTouches = new List<BallTouch>();
         }
 
         /// <summary>
@@ -90,6 +115,7 @@ namespace RocketLeagueReplayParserAPI
             Saves = (int)playerStats[SAVES].Value;
             Shots = (int)playerStats[SHOTS].Value;
             Team = (int)playerStats[TEAM].Value;
+            BallTouches = new List<BallTouch>();
         }
 
         /// <summary>
@@ -98,7 +124,7 @@ namespace RocketLeagueReplayParserAPI
         /// <returns> Formatted info that would be Displayed on the Scoreboard</returns>
         public string[] GetScoreboardInfo()
         {
-            return [PlayerName, Score.ToString(), Goals.ToString(), Assists.ToString(), Saves.ToString(), Shots.ToString()];
+            return [PlayerName, Score.ToString(), Goals.ToString(), Assists.ToString(), Saves.ToString(), Shots.ToString(), Touches.ToString(), BallTouchPossessionPercentage.ToString(), BallPossessionTime.ToString(), BallPossessionPercentage.ToString()];
         }
 
         /// <summary>
@@ -106,7 +132,7 @@ namespace RocketLeagueReplayParserAPI
         /// </summary>
         /// <param name="stat"> The Stat Type to get </param>
         /// <returns> The Game Stat Value </returns>
-        public int GetStat(GameStats stat)
+        public float GetStat(GameStats stat)
         {
             switch (stat)
             {
@@ -120,8 +146,35 @@ namespace RocketLeagueReplayParserAPI
                     return Saves;
                 case GameStats.Shots:
                     return Shots;
+                case GameStats.BallTouches:
+                    return Touches;
+                case GameStats.BallTouchPossession:
+                    return BallTouchPossessionPercentage;
+                case GameStats.BallPossessionTime:
+                    return BallPossessionTime;
+                case GameStats.BallPossessionTimePercentage:
+                    return BallPossessionPercentage;
+
                 default: return 0;
             }
+        }
+
+        /// <summary>
+        /// Adds a Ball Touch to the Player Info
+        /// </summary>
+        /// <param name="touch"> The Ball Touch info </param>
+        public void AddBallTouch(BallTouch touch)
+        {
+            BallTouches.Add(touch);
+        }
+
+        /// <summary>
+        /// Sets all the BallTouches for the Player
+        /// </summary>
+        /// <param name="touches"></param>
+        public void SetBallTouches(List<BallTouch> touches)
+        {
+            BallTouches = touches;
         }
     }
 }

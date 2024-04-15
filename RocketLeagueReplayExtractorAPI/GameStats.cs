@@ -14,7 +14,15 @@ namespace RocketLeagueReplayParserAPI
         Shots,
         BoostGrabs,
         BoostUsage,
-        CarTouches,
+
+
+
+        BallTouches,
+        BallTouchPossession,
+
+        BallPossessionTime,
+        BallPossessionTimePercentage,
+
         Demolitions,
         
 

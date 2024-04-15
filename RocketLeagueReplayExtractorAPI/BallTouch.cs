@@ -10,7 +10,7 @@ namespace RocketLeagueReplayParserAPI
         /// <summary>
         /// The Frame Number the Ball was Touched
         /// </summary>
-        public int FrameNumber { get; set; }
+        public int FrameNumber { get; internal set; }
 
         /// <summary>
         /// The Time in Seconds at which the Ball was Touched
@@ -31,5 +31,10 @@ namespace RocketLeagueReplayParserAPI
         /// The Distance the Object was from the Ball when it was Touched
         /// </summary>
         public double Distance { get; set; }
+        
+        /// <summary>
+        /// The Time until the next Ball Touch Occurs
+        /// </summary>
+        public float TimeUntilNextTouch { get; set; }
     }
 }

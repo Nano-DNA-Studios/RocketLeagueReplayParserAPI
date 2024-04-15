@@ -1,12 +1,10 @@
-﻿
-using DNARocketLeagueReplayParser.ReplayStructure;
+﻿using DNARocketLeagueReplayParser.ReplayStructure;
 using DNARocketLeagueReplayParser.ReplayStructure.Actors;
 using DNARocketLeagueReplayParser.ReplayStructure.Frames;
 using DNARocketLeagueReplayParser.ReplayStructure.Mapping;
 using DNARocketLeagueReplayParser.ReplayStructure.UnrealEngineObjects;
 using Newtonsoft.Json;
-using System.Security.Cryptography;
-
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace RocketLeagueReplayParserAPI
 {
@@ -169,6 +167,7 @@ namespace RocketLeagueReplayParserAPI
             ActorIDToName = GetActorToPlayerMap();
 
             ExtractRigidBodies();
+            CalculateBallTouches();
         }
 
         /// <summary>
@@ -207,10 +206,10 @@ namespace RocketLeagueReplayParserAPI
         /// <param name="blueTeam"> Flag determining if the Total stats should be from the Blue Team or not </param>
         /// <param name="stat"> The Game Stat of Interest </param>
         /// <returns> The Teams Stat Value </returns>
-        public int GetTeamStat(bool blueTeam, GameStats stat)
+        public float GetTeamStat(bool blueTeam, GameStats stat)
         {
             int teamID = blueTeam ? BLUE_TEAM : ORANGE_TEAM;
-            int statValue = 0;
+            float statValue = 0;
 
             foreach (PlayerInfo player in Players)
             {
@@ -258,7 +257,7 @@ namespace RocketLeagueReplayParserAPI
         /// <returns> An Array with the Teams cumulative stats formmated like the In Game Player Scoreboard </returns>
         public string[] GetTeamScoreboard(bool isBlueTeam)
         {
-            return [GetTeamStat(isBlueTeam, GameStats.Score).ToString(), GetTeamStat(isBlueTeam, GameStats.Goals).ToString(), GetTeamStat(isBlueTeam, GameStats.Assists).ToString(), GetTeamStat(isBlueTeam, GameStats.Saves).ToString(), GetTeamStat(isBlueTeam, GameStats.Shots).ToString()];
+            return [GetTeamStat(isBlueTeam, GameStats.Score).ToString(), GetTeamStat(isBlueTeam, GameStats.Goals).ToString(), GetTeamStat(isBlueTeam, GameStats.Assists).ToString(), GetTeamStat(isBlueTeam, GameStats.Saves).ToString(), GetTeamStat(isBlueTeam, GameStats.Shots).ToString(), GetTeamStat(isBlueTeam, GameStats.BallTouches).ToString(), GetTeamStat(isBlueTeam, GameStats.BallTouchPossession).ToString(), GetTeamStat(isBlueTeam, GameStats.BallPossessionTime).ToString(), GetTeamStat(isBlueTeam, GameStats.BallPossessionTimePercentage).ToString()];
         }
 
         /// <summary>
@@ -326,62 +325,77 @@ namespace RocketLeagueReplayParserAPI
             File.WriteAllText(fullFilePath, json);
         }
 
-
-
-        public (int blueTouch, int orangeTouch) GetBallTouches()
+        /// <summary>
+        /// Calculates the Ball Touches that Occur during the Replay and Assigns them to the Players 
+        /// </summary>
+        public void CalculateBallTouches()
         {
+            TouchCalculator touchCalculator = new TouchCalculator(this);
+            List<BallTouch> ballTouches = touchCalculator.GetBallTouches();
+            Dictionary<string, List<BallTouch>> playerTouchDictionary = new Dictionary<string, List<BallTouch>>();
+
+            foreach (BallTouch ballTouch in ballTouches)
+            {
+                PlayerInfo? player = Players.FirstOrDefault(player => player.PlayerName == ActorIDToName[ballTouch.ActorID]);
+
+                if (player == null)
+                    continue;
+
+                if (!playerTouchDictionary.ContainsKey(player.PlayerName))
+                    playerTouchDictionary.Add(player.PlayerName, new List<BallTouch>());
+
+                playerTouchDictionary[player.PlayerName].Add(ballTouch);
+            }
+
             int blueTeamTouches = 0;
             int orangeTeamTouches = 0;
+            float blueTeamPossessionTime = 0;
+            float orangeTeamPossessionTime = 0;
 
-            int count = 0;
-            GameObjectState lastState = BallPosition[0];
-            foreach (GameObjectState ballState in BallPosition)
+            foreach (string playerName in playerTouchDictionary.Keys)
             {
-                if (count != 0)
+                PlayerInfo? player = Players.FirstOrDefault(player => player.PlayerName == playerName);
+
+                if (player == null)
+                    continue;
+
+                if (player.Team == BLUE_TEAM)
                 {
-                    float xDistance = ballState.RigidBody.Position.X - lastState.RigidBody.Position.X;
-                    float yDistance = ballState.RigidBody.Position.Y - lastState.RigidBody.Position.Y;
-                    float zDistance = ballState.RigidBody.Position.Z - lastState.RigidBody.Position.Z;
-
-                    float distance = (float)Math.Sqrt(xDistance * xDistance + yDistance * yDistance + zDistance * zDistance);
-
-                    int frameDifference = ballState.FrameNumber - lastState.FrameNumber;
-
-                    if (distance > 200)
-                        Console.WriteLine($"Distance: {distance}  Frame Difference: {frameDifference}");
+                    blueTeamTouches += playerTouchDictionary[playerName].Count;
+                    blueTeamPossessionTime += playerTouchDictionary[playerName].Sum(touch => touch.TimeUntilNextTouch);
                 }
-                count++;
-                lastState = ballState;
+                else
+                {
+                    orangeTeamTouches += playerTouchDictionary[playerName].Count;
+                    orangeTeamPossessionTime += playerTouchDictionary[playerName].Sum(touch => touch.TimeUntilNextTouch);
+                }
+
+                player.SetBallTouches(playerTouchDictionary[playerName]);
             }
 
-            foreach (GameObjectState ballState in BallPosition)
+            int touchTotal = blueTeamTouches + orangeTeamTouches;
+            float possessionTimeTotal = blueTeamPossessionTime + orangeTeamPossessionTime;
+
+            foreach (string playerName in playerTouchDictionary.Keys)
             {
-                foreach (GameObjectState carState in CarPositions["MyTyranosaur"])
+                PlayerInfo? player = Players.FirstOrDefault(player => player.PlayerName == playerName);
+
+                if (player == null)
+                    continue;
+
+                player.BallPossessionTime = playerTouchDictionary[playerName].Sum(touch => touch.TimeUntilNextTouch);
+
+                if (player.Team == BLUE_TEAM)
                 {
-                    if (ballState.FrameNumber == carState.FrameNumber)
-                    {
-                        //Console.WriteLine($"Car Position: {carState.RigidBody.Position.ToString()}");
-                        //Console.WriteLine($"Ball Position: {ballState.RigidBody.Position.ToString()}");
-
-
-
-                        float xDistance = carState.RigidBody.Position.X - ballState.RigidBody.Position.X;
-                        float yDistance = carState.RigidBody.Position.Y - ballState.RigidBody.Position.Y;
-                        float zDistance = carState.RigidBody.Position.Z - ballState.RigidBody.Position.Z;
-
-                        float distance = (float)Math.Sqrt(Math.Pow(xDistance, 2) + Math.Pow(yDistance, 2) + Math.Pow(zDistance, 2));
-
-                        if (distance < 300)
-                        {
-                            //Console.WriteLine($"Distance: X : {xDistance}  Y : {yDistance}   Z : {zDistance}");
-                            // Console.WriteLine($"Distance: {distance}");
-                        }
-
-                    }
+                    player.BallTouchPossessionPercentage = 100 * (float)playerTouchDictionary[playerName].Count / blueTeamTouches;
+                    player.BallPossessionPercentage = 100 * player.BallPossessionTime / blueTeamPossessionTime;
+                }
+                else
+                {
+                    player.BallTouchPossessionPercentage = 100 * (float)playerTouchDictionary[playerName].Count / orangeTeamTouches;
+                    player.BallPossessionPercentage = 100 * player.BallPossessionTime / orangeTeamPossessionTime;
                 }
             }
-
-            return (blueTeamTouches, orangeTeamTouches);
         }
 
         /// <summary>
@@ -410,7 +424,6 @@ namespace RocketLeagueReplayParserAPI
             string json = JsonConvert.SerializeObject(frame, settings);
             File.WriteAllText(fullFilePath, json);
         }
-
 
         /// <summary>
         /// Extracts the Info necessary to map an Actor / GameObject to a Player Name
@@ -450,7 +463,6 @@ namespace RocketLeagueReplayParserAPI
 
             return ActorToPlayerNameMap;
         }
-
 
         /// <summary>
         /// Extracts all the Rigid Bodies from the Replay Info Object

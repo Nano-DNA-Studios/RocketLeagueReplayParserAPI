@@ -22,7 +22,7 @@ namespace RocketLeagueReplayParserAPI
         /// The Number of Surrounding Frames to Check for Car States
         /// </summary>
         private const int SURROUNDING_FRAMES = 2;
-        
+
         /// <summary>
         /// The Number of Frames to Check for Acceleration
         /// </summary>
@@ -31,15 +31,11 @@ namespace RocketLeagueReplayParserAPI
         #endregion
 
         #region Properties
-        /// <summary>
-        /// The List of Ball Positions in the Replay File
-        /// </summary>
-        public List<GameObjectState> BallPosition { get; set; }
 
         /// <summary>
-        /// The List of Car Positions in the Replay File
+        /// The Replay to Calculate the Ball Touches for
         /// </summary>
-        public Dictionary<string, List<GameObjectState>> CarPositions { get; set; }
+        private Replay _replay { get; set; }
 
         /// <summary>
         /// Refromated Car Positions by Frame Number
@@ -54,10 +50,9 @@ namespace RocketLeagueReplayParserAPI
         /// </summary>
         /// <param name="ballPosition"> The Ball Positions </param>
         /// <param name="carPositions"> The Car Positions </param>
-        public TouchCalculator(List<GameObjectState> ballPosition, Dictionary<string, List<GameObjectState>> carPositions)
+        public TouchCalculator(Replay replay)
         {
-            BallPosition = ballPosition;
-            CarPositions = carPositions;
+            _replay = replay;
 
             SetCarPositionsByFrameDictionary();
         }
@@ -73,7 +68,7 @@ namespace RocketLeagueReplayParserAPI
         {
             Dictionary<int, List<GameObjectState>> carPositionsByFrame = new Dictionary<int, List<GameObjectState>>();
 
-            foreach (KeyValuePair<string, List<GameObjectState>> carPosition in CarPositions)
+            foreach (KeyValuePair<string, List<GameObjectState>> carPosition in _replay.CarPositions)
             {
                 foreach (GameObjectState gameObjectState in carPosition.Value)
                 {
@@ -141,7 +136,7 @@ namespace RocketLeagueReplayParserAPI
         /// <returns> The Maximum Acceleration Values in the next few Frames </returns>
         private double GetMaxAcceleration(int index)
         {
-            List<double> speeds = BallPosition.Skip(index).Take(ACCELERATION_FRAMES).Select(ball => ball.RigidBody.GetVelocityKMH()).ToList();
+            List<double> speeds = _replay.BallPosition.Skip(index).Take(ACCELERATION_FRAMES).Select(ball => ball.RigidBody.GetVelocityKMH()).ToList();
             List<double> accelerations = speeds.Skip(1).Zip(speeds, (first, second) => first - second).ToList();
 
             return Math.Abs(accelerations.DefaultIfEmpty(0).Max());
@@ -160,9 +155,9 @@ namespace RocketLeagueReplayParserAPI
             List<BallTouch> ballTouches = new List<BallTouch>();
 
             double lastMaxAcceleration = 0;
-            for (int i = 0; i < BallPosition.Count; i++)
+            for (int i = 0; i < _replay.BallPosition.Count; i++)
             {
-                GameObjectState ballState = BallPosition[i];
+                GameObjectState ballState = _replay.BallPosition[i];
                 (double minDistance, GameObjectState closestCar) = GetClosestCar(ballState);
                 double maxAcceleration = GetMaxAcceleration(i);
 
@@ -178,7 +173,7 @@ namespace RocketLeagueReplayParserAPI
                     Time = ballState.Time,
                     ActorID = closestCar.ActorID,
                     RigidBody = ballState.RigidBody,
-                    Distance = minDistance
+                    Distance = minDistance,
                 };
 
                 if (ballTouches.Count > 0 && lastMaxAcceleration == maxAcceleration)
@@ -194,6 +189,11 @@ namespace RocketLeagueReplayParserAPI
 
                 lastMaxAcceleration = maxAcceleration;
             }
+
+            for (int i = 0; i < ballTouches.Count - 2; i++)
+                ballTouches[i].TimeUntilNextTouch = ballTouches[i + 1].Time - ballTouches[i].Time;
+
+            ballTouches[ballTouches.Count - 1].TimeUntilNextTouch = _replay.MatchLength - ballTouches[ballTouches.Count - 1].Time;
 
             return ballTouches;
         }
