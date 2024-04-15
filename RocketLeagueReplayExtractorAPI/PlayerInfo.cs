@@ -1,9 +1,4 @@
 ﻿using DNARocketLeagueReplayParser.ReplayStructure.Mapping;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace RocketLeagueReplayParserAPI
 {
@@ -19,7 +14,6 @@ namespace RocketLeagueReplayParserAPI
         private const string NAME = "Name";
         private const string SHOTS = "Shots";
         private const string TEAM = "Team";
-
 
         /// <summary>
         /// The ID assigned to the Player at the Start of the Match
@@ -57,7 +51,35 @@ namespace RocketLeagueReplayParserAPI
         public int Shots { get; private set; }
 
         //0 = Blue, 1 = Orange
+        /// <summary>
+        /// The Team ID the Player is on. 0 = Blue, 1 = Orange
+        /// </summary>
         public int Team { get; private set; }
+
+        /// <summary>
+        /// The Number of Touches the Player got
+        /// </summary>
+        public int Touches => BallTouches.Count;
+
+        /// <summary>
+        /// List of all the Ball Touches the Player got with their Info
+        /// </summary>
+        public List<BallTouch> BallTouches { get; private set; }
+
+        /// <summary>
+        /// The Percentage of Touches the Player got on the Ball compared to all Players
+        /// </summary>
+        public float BallTouchPossessionPercentage { get; internal set; }
+
+        /// <summary>
+        /// The Time the Player Possessed the Ball
+        /// </summary>
+        public float BallPossessionTime { get; internal set; }
+
+        /// <summary>
+        /// The Percentage of Time the Player Possessed the Ball compared to all Players
+        /// </summary>
+        public float BallPossessionPercentage { get; internal set; }
 
 
         //Eventually support
@@ -77,11 +99,15 @@ namespace RocketLeagueReplayParserAPI
         {
             PlayerID = playerID;
             PlayerName = playerName;
+            BallTouches = new List<BallTouch>();
         }
 
+        /// <summary>
+        /// Initializes a new Player Info Object from the given Property Dictionary
+        /// </summary>
+        /// <param name="playerStats"> The Property Dictionary containing the Players Stats </param>
         public PlayerInfo(PropertyDictionary playerStats)
         {
-
             PlayerName = (string)playerStats[NAME].Value;
             Score = (int)playerStats[SCORE].Value;
             Goals = (int)playerStats[GOALS].Value;
@@ -89,64 +115,66 @@ namespace RocketLeagueReplayParserAPI
             Saves = (int)playerStats[SAVES].Value;
             Shots = (int)playerStats[SHOTS].Value;
             Team = (int)playerStats[TEAM].Value;
-
-        }
-
-
-
-
-        /// <summary>
-        /// Sets the Number of Poinrts the Player got
-        /// </summary>
-        /// <param name="score"> The Number of Points/Score the Player got </param>
-        public void SetScore(int score)
-        {
-            Score = score;
-        }
-
-        /// <summary>
-        /// Sets the Number of Goals the Player Scored
-        /// </summary>
-        /// <param name="goals"> The Number of Goals the Player Scored </param>
-        public void SetGoals(int goals)
-        {
-            Goals = goals;
-        }
-
-        /// <summary>
-        /// Sets the Number of Assists the Player got
-        /// </summary>
-        /// <param name="assists"> The Number of Assists </param>
-        public void SetAssists(int assists)
-        {
-            Assists = assists;
-        }
-
-        /// <summary>
-        /// Sets the Number of Saves the Player got
-        /// </summary>
-        /// <param name="saves"> The Number of Saves</param>
-        public void SetSaves(int saves)
-        {
-            Saves = saves;
-        }
-
-        /// <summary>
-        /// Sets the Number of Shots the Player took
-        /// </summary>
-        /// <param name="shots"> The Number of Shots </param>
-        public void SetShots(int shots)
-        {
-            Shots = shots;
+            BallTouches = new List<BallTouch>();
         }
 
         /// <summary>
         /// Gets the Information that would displayed on the Scoreboard in the same Format as the Scoreboard
         /// </summary>
         /// <returns> Formatted info that would be Displayed on the Scoreboard</returns>
-        public string[] GetScoreboardInfo ()
+        public string[] GetScoreboardInfo()
         {
-            return [PlayerName, Score.ToString(), Goals.ToString(), Assists.ToString(), Saves.ToString(), Shots.ToString()];
+            return [PlayerName, Score.ToString(), Goals.ToString(), Assists.ToString(), Saves.ToString(), Shots.ToString(), Touches.ToString(), BallTouchPossessionPercentage.ToString(), BallPossessionTime.ToString(), BallPossessionPercentage.ToString()];
+        }
+
+        /// <summary>
+        /// Returns the Game Stat Value for the Player based on the Stat Type
+        /// </summary>
+        /// <param name="stat"> The Stat Type to get </param>
+        /// <returns> The Game Stat Value </returns>
+        public float GetStat(GameStats stat)
+        {
+            switch (stat)
+            {
+                case GameStats.Score:
+                    return Score;
+                case GameStats.Goals:
+                    return Goals;
+                case GameStats.Assists:
+                    return Assists;
+                case GameStats.Saves:
+                    return Saves;
+                case GameStats.Shots:
+                    return Shots;
+                case GameStats.BallTouches:
+                    return Touches;
+                case GameStats.BallTouchPossession:
+                    return BallTouchPossessionPercentage;
+                case GameStats.BallPossessionTime:
+                    return BallPossessionTime;
+                case GameStats.BallPossessionTimePercentage:
+                    return BallPossessionPercentage;
+
+                default: return 0;
+            }
+        }
+
+        /// <summary>
+        /// Adds a Ball Touch to the Player Info
+        /// </summary>
+        /// <param name="touch"> The Ball Touch info </param>
+        public void AddBallTouch(BallTouch touch)
+        {
+            BallTouches.Add(touch);
+        }
+
+        /// <summary>
+        /// Sets all the BallTouches for the Player
+        /// </summary>
+        /// <param name="touches"></param>
+        public void SetBallTouches(List<BallTouch> touches)
+        {
+            BallTouches = touches;
         }
     }
 }
