@@ -16,6 +16,10 @@
 	</ItemGroup>
 
 	<ItemGroup>
+	  <ProjectReference Include="..\..\DNA-Rocket-League-Replay-Parser\DNARocketLeagueReplayParser\DNARocketLeagueReplayParser.csproj" />
+	</ItemGroup>
+
+	<ItemGroup>
 		<Reference Include="DNARocketLeagueReplayParser">
 			<HintPath>..\..\DNA-Rocket-League-Replay-Parser\DNARocketLeagueReplayParser\bin\Debug\net8.0\DNARocketLeagueReplayParser.dll</HintPath>
 		</Reference>
