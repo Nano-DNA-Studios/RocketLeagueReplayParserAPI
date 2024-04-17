@@ -4,7 +4,6 @@ using DNARocketLeagueReplayParser.ReplayStructure.Frames;
 using DNARocketLeagueReplayParser.ReplayStructure.Mapping;
 using DNARocketLeagueReplayParser.ReplayStructure.UnrealEngineObjects;
 using Newtonsoft.Json;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace RocketLeagueReplayParserAPI
 {
@@ -120,7 +119,7 @@ namespace RocketLeagueReplayParserAPI
         /// <summary>
         /// Array of PlayerInfo Objects
         /// </summary>
-        public PlayerInfo[] Players { get; private set; }
+        //public PlayerInfo[] Players { get; private set; }
 
         /// <summary>
         /// The Blue Teams Number of Goals At the end of the replay
@@ -152,6 +151,9 @@ namespace RocketLeagueReplayParserAPI
         /// </summary>
         public Dictionary<string, List<GameObjectState>> CarPositions { get; private set; }
 
+
+        public Roster MatchRoster { get; private set; }
+
         /// <summary>
         /// Initializes the Replay Object from the given Path
         /// </summary>
@@ -163,8 +165,11 @@ namespace RocketLeagueReplayParserAPI
             using (BinaryReader reader = new BinaryReader(stream))
                 _replayInfo = PsyonixReplay.Deserialize(reader);
 
-            Players = ExtractPlayers();
+            MatchRoster = new Roster(_replayInfo);
             ActorIDToName = GetActorToPlayerMap();
+
+            foreach (uint key in ActorIDToName.Keys)
+                Console.WriteLine(key + " " + ActorIDToName[key]);
 
             ExtractRigidBodies();
             CalculateBallTouches();
@@ -200,7 +205,7 @@ namespace RocketLeagueReplayParserAPI
             return players.ToArray();
         }
 
-        /// <summary>
+        /*/// <summary>
         /// Gets the Teams Stat Value 
         /// </summary>
         /// <param name="blueTeam"> Flag determining if the Total stats should be from the Blue Team or not </param>
@@ -218,7 +223,7 @@ namespace RocketLeagueReplayParserAPI
             }
 
             return statValue;
-        }
+        }*/
 
         /// <summary>
         /// Renames the Replay and Saves it to the given Path
@@ -250,7 +255,7 @@ namespace RocketLeagueReplayParserAPI
             return Path.GetFileName(_pathToFile);
         }
 
-        /// <summary>
+        /*/// <summary>
         /// Gets the Team Scoreboard Array for the given Team
         /// </summary>
         /// <param name="isBlueTeam"> Flag indicating if the Team is Blue or not </param>
@@ -258,7 +263,7 @@ namespace RocketLeagueReplayParserAPI
         public string[] GetTeamScoreboard(bool isBlueTeam)
         {
             return [GetTeamStat(isBlueTeam, GameStats.Score).ToString(), GetTeamStat(isBlueTeam, GameStats.Goals).ToString(), GetTeamStat(isBlueTeam, GameStats.Assists).ToString(), GetTeamStat(isBlueTeam, GameStats.Saves).ToString(), GetTeamStat(isBlueTeam, GameStats.Shots).ToString(), GetTeamStat(isBlueTeam, GameStats.BallTouches).ToString(), GetTeamStat(isBlueTeam, GameStats.BallTouchPossession).ToString(), GetTeamStat(isBlueTeam, GameStats.BallPossessionTime).ToString(), GetTeamStat(isBlueTeam, GameStats.BallPossessionTimePercentage).ToString()];
-        }
+        }*/
 
         /// <summary>
         /// Saves the Psyonix Replay Object as a JSON File
@@ -336,7 +341,7 @@ namespace RocketLeagueReplayParserAPI
 
             foreach (BallTouch ballTouch in ballTouches)
             {
-                PlayerInfo? player = Players.FirstOrDefault(player => player.PlayerName == ActorIDToName[ballTouch.ActorID]);
+                PlayerInfo? player = MatchRoster.GetAllPlayers().FirstOrDefault(player => player.PlayerName == ActorIDToName[ballTouch.ActorID]);
 
                 if (player == null)
                     continue;
@@ -354,7 +359,7 @@ namespace RocketLeagueReplayParserAPI
 
             foreach (string playerName in playerTouchDictionary.Keys)
             {
-                PlayerInfo? player = Players.FirstOrDefault(player => player.PlayerName == playerName);
+                PlayerInfo? player = MatchRoster.GetAllPlayers().FirstOrDefault(player => player.PlayerName == playerName);
 
                 if (player == null)
                     continue;
@@ -378,7 +383,7 @@ namespace RocketLeagueReplayParserAPI
 
             foreach (string playerName in playerTouchDictionary.Keys)
             {
-                PlayerInfo? player = Players.FirstOrDefault(player => player.PlayerName == playerName);
+                PlayerInfo? player = MatchRoster.GetAllPlayers().FirstOrDefault(player => player.PlayerName == playerName);
 
                 if (player == null)
                     continue;

@@ -35,7 +35,7 @@ namespace RocketLeagueParserAPI_UnitTests
         {
             Replay replay = LoadReplay(replayFilePath);
 
-            Assert.That(replay.Players.Length, Is.EqualTo(expectedPlayerNum));
+            Assert.That(replay.MatchRoster.GetAllPlayers().Count(), Is.EqualTo(expectedPlayerNum));
         }
 
         /// <summary>
@@ -53,7 +53,7 @@ namespace RocketLeagueParserAPI_UnitTests
         {
             Replay replay = LoadReplay(replayFilePath);
 
-            foreach (PlayerInfo player in replay.Players)
+            foreach (PlayerInfo player in replay.MatchRoster.GetAllPlayers())
             {
                 Assert.That(player.PlayerName, Is.Not.Null);
                 Assert.That(player.Team, Is.AtLeast(0));
@@ -82,7 +82,7 @@ namespace RocketLeagueParserAPI_UnitTests
         {
             Replay replay = LoadReplay(replayFilePath);
 
-            foreach (PlayerInfo player in replay.Players)
+            foreach (PlayerInfo player in replay.MatchRoster.GetAllPlayers())
             {
                 if (player.PlayerName != playerName)
                     continue;
@@ -111,7 +111,7 @@ namespace RocketLeagueParserAPI_UnitTests
         {
             Replay replay = LoadReplay(replayFilePath);
 
-            foreach (PlayerInfo player in replay.Players)
+            foreach (PlayerInfo player in replay.MatchRoster.GetAllPlayers())
             {
                 if (player.PlayerName != scoreBoardInfo[0])
                     continue;
@@ -133,28 +133,28 @@ namespace RocketLeagueParserAPI_UnitTests
         /// <param name="gameStat"> The Game Stat to extract </param>
         /// <param name="expectedValue"> The Expected Output of the Function </param>
         [Test]
-        [TestCase("Resources\\GoldenGoose.replay", "alffaz", GameStats.Score, 757)]
-        [TestCase("Resources\\GoldenGoose.replay", "alffaz", GameStats.Goals, 2)]
-        [TestCase("Resources\\GoldenGoose.replay", "alffaz", GameStats.Assists, 0)]
-        [TestCase("Resources\\GoldenGoose.replay", "alffaz", GameStats.Saves, 3)]
-        [TestCase("Resources\\GoldenGoose.replay", "alffaz", GameStats.Shots, 5)]
-        [TestCase("Resources\\GoldenGoose.replay", "alffaz", GameStats.None, 0)]
-        [TestCase("Resources\\GoldenGoose.replay", "MyTyranosaur", GameStats.Score, 880)]
-        [TestCase("Resources\\GoldenGoose.replay", "MyTyranosaur", GameStats.Goals, 3)]
-        [TestCase("Resources\\GoldenGoose.replay", "MyTyranosaur", GameStats.Assists, 0)]
-        [TestCase("Resources\\GoldenGoose.replay", "MyTyranosaur", GameStats.Saves, 4)]
-        [TestCase("Resources\\GoldenGoose.replay", "MyTyranosaur", GameStats.Shots, 4)]
-        [TestCase("Resources\\GoldenGoose.replay", "MyTyranosaur", GameStats.None, 0)]
-        public void GetStat (string replayFilePath,string playerName, GameStats gameStat, int expectedValue)
+        [TestCase("Resources\\GoldenGoose.replay", "alffaz", GameProperties.Score, 757)]
+        [TestCase("Resources\\GoldenGoose.replay", "alffaz", GameProperties.Goals, 2)]
+        [TestCase("Resources\\GoldenGoose.replay", "alffaz", GameProperties.Assists, 0)]
+        [TestCase("Resources\\GoldenGoose.replay", "alffaz", GameProperties.Saves, 3)]
+        [TestCase("Resources\\GoldenGoose.replay", "alffaz", GameProperties.Shots, 5)]
+        [TestCase("Resources\\GoldenGoose.replay", "alffaz", GameProperties.None, 0)]
+        [TestCase("Resources\\GoldenGoose.replay", "MyTyranosaur", GameProperties.Score, 880)]
+        [TestCase("Resources\\GoldenGoose.replay", "MyTyranosaur", GameProperties.Goals, 3)]
+        [TestCase("Resources\\GoldenGoose.replay", "MyTyranosaur", GameProperties.Assists, 0)]
+        [TestCase("Resources\\GoldenGoose.replay", "MyTyranosaur", GameProperties.Saves, 4)]
+        [TestCase("Resources\\GoldenGoose.replay", "MyTyranosaur", GameProperties.Shots, 4)]
+        [TestCase("Resources\\GoldenGoose.replay", "MyTyranosaur", GameProperties.None, 0)]
+        public void GetStat (string replayFilePath,string playerName, string gameStat, int expectedValue)
         {
             Replay replay = LoadReplay(replayFilePath);
 
-            foreach (PlayerInfo player in replay.Players)
+            foreach (PlayerInfo player in replay.MatchRoster.GetAllPlayers())
             {
                 if (player.PlayerName != playerName)
                     continue;
 
-                Assert.That(player.GetStat(gameStat), Is.EqualTo(expectedValue));
+                Assert.That(player.GetStat<int>(gameStat), Is.EqualTo(expectedValue));
             }
         }
     }
