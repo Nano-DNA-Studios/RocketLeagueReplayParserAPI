@@ -127,7 +127,8 @@ namespace RocketLeagueReplayParserAPI
             {
                 Property property = playerStats[key];
                 RocketLeagueProperty RLProperty = new RocketLeagueProperty(property.Name, property.Type, property.Value);
-                PlayerProperties.Add(key, RLProperty);
+                if (RLProperty.Name != GameProperties.None)
+                    PlayerProperties.Add(key, RLProperty);
             }
 
             BallTouches = new List<BallTouch>();

@@ -109,7 +109,7 @@ namespace RocketLeagueReplayParserAPI
         /// <summary>
         /// The Replay Info Object
         /// </summary>
-        private static PsyonixReplay _replayInfo;
+        private PsyonixReplay _replayInfo;
 
         /// <summary>
         /// The Path to the File Being Parsed

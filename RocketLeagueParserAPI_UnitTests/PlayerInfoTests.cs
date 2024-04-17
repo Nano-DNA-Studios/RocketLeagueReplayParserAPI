@@ -156,8 +156,8 @@ namespace RocketLeagueParserAPI_UnitTests
 
                 if (!player.StatExists(gameStat))
                     Assert.Throws<KeyNotFoundException>(() => player.GetStat<int>(gameStat));
-
-                Assert.That(player.GetStat<int>(gameStat), Is.EqualTo(expectedValue));
+                else
+                    Assert.That(player.GetStat<int>(gameStat), Is.EqualTo(expectedValue));
             }
         }
     }
