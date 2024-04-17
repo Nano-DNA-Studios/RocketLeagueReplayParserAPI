@@ -143,12 +143,25 @@ namespace RocketLeagueReplayParserAPI
         }
 
         /// <summary>
+        /// Returns a Boolean Flag indicating if the Stat Exists for the Player
+        /// </summary>
+        /// <param name="stat"> The Stat to check if it Exists </param>
+        /// <returns> True if the Player has the Stat, False if it doesn't </returns>
+        public bool StatExists (string stat)
+        {
+            return PlayerProperties.ContainsKey(stat);
+        }
+
+        /// <summary>
         /// Returns the Game Stat Value for the Player based on the Stat Type
         /// </summary>
         /// <param name="stat"> The Stat Type to get </param>
         /// <returns> The Game Stat Value </returns>
         public T GetStat<T>(string stat)
         {
+            if (!StatExists(stat))
+                throw new KeyNotFoundException($"Stat {stat} not found in the Player Info");
+
             return PlayerProperties.TryGetProperty<T>(stat);
         }
 

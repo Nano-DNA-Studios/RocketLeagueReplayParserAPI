@@ -145,7 +145,7 @@ namespace RocketLeagueParserAPI_UnitTests
         [TestCase("Resources\\GoldenGoose.replay", "MyTyranosaur", GameProperties.Saves, 4)]
         [TestCase("Resources\\GoldenGoose.replay", "MyTyranosaur", GameProperties.Shots, 4)]
         [TestCase("Resources\\GoldenGoose.replay", "MyTyranosaur", GameProperties.None, 0)]
-        public void GetStat (string replayFilePath,string playerName, string gameStat, int expectedValue)
+        public void GetStat(string replayFilePath, string playerName, string gameStat, int expectedValue)
         {
             Replay replay = LoadReplay(replayFilePath);
 
@@ -153,6 +153,9 @@ namespace RocketLeagueParserAPI_UnitTests
             {
                 if (player.PlayerName != playerName)
                     continue;
+
+                if (!player.StatExists(gameStat))
+                    Assert.Throws<KeyNotFoundException>(() => player.GetStat<int>(gameStat));
 
                 Assert.That(player.GetStat<int>(gameStat), Is.EqualTo(expectedValue));
             }

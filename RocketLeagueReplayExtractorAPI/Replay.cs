@@ -168,9 +168,6 @@ namespace RocketLeagueReplayParserAPI
             MatchRoster = new Roster(_replayInfo);
             ActorIDToName = GetActorToPlayerMap();
 
-            foreach (uint key in ActorIDToName.Keys)
-                Console.WriteLine(key + " " + ActorIDToName[key]);
-
             ExtractRigidBodies();
             CalculateBallTouches();
         }
@@ -497,12 +494,15 @@ namespace RocketLeagueReplayParserAPI
 
                             if (_replayInfo.Objects[property.GetClassCache().ObjectIndex] == CAR)
                             {
-                                if (carPositions.TryGetValue(ActorIDToName[actorState.Id], out List<GameObjectState> positions))
-                                    positions.Add(gameObjectState);
-                                else
+                                if (ActorIDToName.TryGetValue(actorState.Id, out string playerName))
                                 {
-                                    carPositions.Add(ActorIDToName[actorState.Id], new List<GameObjectState>());
-                                    carPositions[ActorIDToName[actorState.Id]].Add(gameObjectState);
+                                    if (carPositions.TryGetValue(playerName, out List<GameObjectState> positions))
+                                        positions.Add(gameObjectState);
+                                    else
+                                    {
+                                        carPositions.Add(ActorIDToName[actorState.Id], new List<GameObjectState>());
+                                        carPositions[ActorIDToName[actorState.Id]].Add(gameObjectState);
+                                    }
                                 }
                             }
 
