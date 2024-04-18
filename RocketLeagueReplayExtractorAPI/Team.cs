@@ -3,6 +3,7 @@ using DNARocketLeagueReplayParser.ReplayStructure.Mapping;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Numerics;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -19,6 +20,7 @@ namespace RocketLeagueReplayParserAPI
         /// </summary>
         public int TeamID => TeamProperties.TryGetProperty(GameProperties.Team, 0);
 
+        public string TeamName => TeamID == 0 ? GameProperties.BlueTeam : GameProperties.OrangeTeam;
 
         /// <summary>
         /// Array containing the Players Info on the Team
@@ -57,7 +59,16 @@ namespace RocketLeagueReplayParserAPI
             float statValue = 0;
 
             foreach (PlayerInfo player in Players)
-                statValue += player.PlayerProperties.TryGetProperty<float>(stat);
+            {
+                try
+                {
+                    statValue += player.PlayerProperties.TryGetProperty<float>(stat);
+                } catch (Exception e)
+                {
+                    statValue += (float)player.PlayerProperties.TryGetProperty<int>(stat);
+                }
+            }
+                
 
             return statValue;
         }
@@ -84,7 +95,13 @@ namespace RocketLeagueReplayParserAPI
 
         public string[] GetTeamScoreboard()
         {
-            return [GetTeamStat(GameProperties.Score).ToString(), GetTeamStat(GameProperties.Goals).ToString(), GetTeamStat(GameProperties.Assists).ToString(), GetTeamStat(GameProperties.Saves).ToString(), GetTeamStat(GameProperties.Shots).ToString(), GetTeamStat(GameProperties.BallTouches).ToString(), GetTeamStat(GameProperties.BallTouchPercentage).ToString(), GetTeamStat(GameProperties.BallPossessionTime).ToString(), GetTeamStat(GameProperties.BallPossessionTimePercentage).ToString()];
+            List<string> scoreboard = [TeamName];
+
+            foreach (string stat in PlayerInfo.DisplayStats)
+                scoreboard.Add(GetTeamStat(stat).ToString());
+
+            return scoreboard.ToArray();
+            //return [GetTeamStat(GameProperties.Score).ToString(), GetTeamStat(GameProperties.Goals).ToString(), GetTeamStat(GameProperties.Assists).ToString(), GetTeamStat(GameProperties.Saves).ToString(), GetTeamStat(GameProperties.Shots).ToString(), GetTeamStat(GameProperties.BallTouches).ToString(), GetTeamStat(GameProperties.BallTouchPercentage).ToString(), GetTeamStat(GameProperties.BallPossessionTime).ToString(), GetTeamStat(GameProperties.BallPossessionTimePercentage).ToString()];
         }
     }
 }

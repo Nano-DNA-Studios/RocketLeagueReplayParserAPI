@@ -109,7 +109,7 @@ namespace RocketLeagueReplayParserAPI
         /// <summary>
         /// The Replay Info Object
         /// </summary>
-        private PsyonixReplay _replayInfo;
+        public PsyonixReplay _replayInfo;
 
         /// <summary>
         /// The Path to the File Being Parsed
@@ -139,12 +139,12 @@ namespace RocketLeagueReplayParserAPI
         /// <summary>
         /// Mapping of Actor ID to Player Name
         /// </summary>
-        public Dictionary<uint, string> ActorIDToName { get; private set; }
+       // public Dictionary<uint, string> ActorIDToName { get; private set; }
 
         /// <summary>
         /// List of all the Balls State in the Replay
         /// </summary>
-        public List<GameObjectState> BallPosition { get; private set; }
+        public List<GameObjectState> BallPositions { get; private set; }
 
         /// <summary>
         /// Dictionary of all the Car States in the Replay
@@ -165,11 +165,12 @@ namespace RocketLeagueReplayParserAPI
             using (BinaryReader reader = new BinaryReader(stream))
                 _replayInfo = PsyonixReplay.Deserialize(reader);
 
-            MatchRoster = new Roster(_replayInfo);
-            ActorIDToName = GetActorToPlayerMap();
+            SetMatchLength();
+            MatchRoster = new Roster(this);
 
-            ExtractRigidBodies();
-            CalculateBallTouches();
+            ExtractRigidBodies(_replayInfo);
+
+            MatchRoster.CalculateBallTouches(this);
         }
 
         /// <summary>
@@ -202,26 +203,6 @@ namespace RocketLeagueReplayParserAPI
             return players.ToArray();
         }
 
-        /*/// <summary>
-        /// Gets the Teams Stat Value 
-        /// </summary>
-        /// <param name="blueTeam"> Flag determining if the Total stats should be from the Blue Team or not </param>
-        /// <param name="stat"> The Game Stat of Interest </param>
-        /// <returns> The Teams Stat Value </returns>
-        public float GetTeamStat(bool blueTeam, GameStats stat)
-        {
-            int teamID = blueTeam ? BLUE_TEAM : ORANGE_TEAM;
-            float statValue = 0;
-
-            foreach (PlayerInfo player in Players)
-            {
-                if (player.Team == teamID)
-                    statValue += player.GetStat(stat);
-            }
-
-            return statValue;
-        }*/
-
         /// <summary>
         /// Renames the Replay and Saves it to the given Path
         /// </summary>
@@ -251,16 +232,6 @@ namespace RocketLeagueReplayParserAPI
         {
             return Path.GetFileName(_pathToFile);
         }
-
-        /*/// <summary>
-        /// Gets the Team Scoreboard Array for the given Team
-        /// </summary>
-        /// <param name="isBlueTeam"> Flag indicating if the Team is Blue or not </param>
-        /// <returns> An Array with the Teams cumulative stats formmated like the In Game Player Scoreboard </returns>
-        public string[] GetTeamScoreboard(bool isBlueTeam)
-        {
-            return [GetTeamStat(isBlueTeam, GameStats.Score).ToString(), GetTeamStat(isBlueTeam, GameStats.Goals).ToString(), GetTeamStat(isBlueTeam, GameStats.Assists).ToString(), GetTeamStat(isBlueTeam, GameStats.Saves).ToString(), GetTeamStat(isBlueTeam, GameStats.Shots).ToString(), GetTeamStat(isBlueTeam, GameStats.BallTouches).ToString(), GetTeamStat(isBlueTeam, GameStats.BallTouchPossession).ToString(), GetTeamStat(isBlueTeam, GameStats.BallPossessionTime).ToString(), GetTeamStat(isBlueTeam, GameStats.BallPossessionTimePercentage).ToString()];
-        }*/
 
         /// <summary>
         /// Saves the Psyonix Replay Object as a JSON File
@@ -327,7 +298,7 @@ namespace RocketLeagueReplayParserAPI
             File.WriteAllText(fullFilePath, json);
         }
 
-        /// <summary>
+       /* /// <summary>
         /// Calculates the Ball Touches that Occur during the Replay and Assigns them to the Players 
         /// </summary>
         public void CalculateBallTouches()
@@ -398,7 +369,7 @@ namespace RocketLeagueReplayParserAPI
                     player.BallPossessionPercentage = 100 * player.BallPossessionTime / orangeTeamPossessionTime;
                 }
             }
-        }
+        }*/
 
         /// <summary>
         /// Saves an Individual Frame of the Replay as a JSON File
@@ -469,20 +440,20 @@ namespace RocketLeagueReplayParserAPI
         /// <summary>
         /// Extracts all the Rigid Bodies from the Replay Info Object
         /// </summary>
-        private void ExtractRigidBodies()
+        private void ExtractRigidBodies(PsyonixReplay replay)
         {
             List<GameObjectState> ballPosition = new List<GameObjectState>();
             Dictionary<string, List<GameObjectState>> carPositions = new Dictionary<string, List<GameObjectState>>();
             uint frameNumber = 0;
 
-            foreach (PsyonixFrame frame in _replayInfo.Frames)
+            foreach (PsyonixFrame frame in replay.Frames)
             {
                 frameNumber++;
                 foreach (ActorState actorState in frame.ActorStates)
                 {
                     foreach (ActorStateProperty property in actorState.Properties.Values)
                     {
-                        if (property.PropertyId == RIGID_BODY)
+                        if (property.PropertyId == GameProperties.RigidBody)
                         {
                             GameObjectState gameObjectState = new GameObjectState
                             {
@@ -492,32 +463,38 @@ namespace RocketLeagueReplayParserAPI
                                 ActorID = actorState.Id
                             };
 
-                            if (_replayInfo.Objects[property.GetClassCache().ObjectIndex] == CAR)
+                            if (replay.Objects[property.GetClassCache().ObjectIndex] == GameProperties.Car)
                             {
-                                if (ActorIDToName.TryGetValue(actorState.Id, out string playerName))
+                                if (MatchRoster.ActorIDToName.TryGetValue(actorState.Id, out string playerName))
                                 {
                                     if (carPositions.TryGetValue(playerName, out List<GameObjectState> positions))
                                         positions.Add(gameObjectState);
                                     else
                                     {
-                                        carPositions.Add(ActorIDToName[actorState.Id], new List<GameObjectState>());
-                                        carPositions[ActorIDToName[actorState.Id]].Add(gameObjectState);
+                                        carPositions.Add(MatchRoster.ActorIDToName[actorState.Id], new List<GameObjectState>());
+                                        carPositions[MatchRoster.ActorIDToName[actorState.Id]].Add(gameObjectState);
                                     }
                                 }
                             }
 
-                            if (_replayInfo.Objects[property.GetClassCache().ObjectIndex] == BALL)
+                            if (replay.Objects[property.GetClassCache().ObjectIndex] == GameProperties.Ball)
                                 ballPosition.Add(gameObjectState);
                         }
                     }
                 }
+            }
 
+            BallPositions = ReplayInterpolator.InterpolateFrames(ballPosition);
+            CarPositions = ReplayInterpolator.InterpolateAllFrames(carPositions);
+        }
+
+        private void SetMatchLength()
+        {
+            foreach (PsyonixFrame frame in _replayInfo.Frames)
+            {
                 if (frame.Time > MatchLength)
                     MatchLength = frame.Time;
             }
-
-            BallPosition = ReplayInterpolator.InterpolateFrames(ballPosition);
-            CarPositions = ReplayInterpolator.InterpolateAllFrames(carPositions);
         }
     }
 }

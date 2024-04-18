@@ -1,4 +1,6 @@
 ﻿
+using System.Runtime.InteropServices;
+
 namespace RocketLeagueReplayParserAPI
 {
     public class RocketLeaguePropertyDictionary : Dictionary<string, RocketLeagueProperty>
@@ -43,7 +45,7 @@ namespace RocketLeagueReplayParserAPI
                     throw new Exception($"Value {value.Value} is not of type {typeof(T)}");
                 }
             else
-                throw new KeyNotFoundException($"Key {key} not found in the Dictionary");
+                throw new KeyNotFoundException($"Key \"{key}\" not found in the Dictionary");
         }
     }
 }

@@ -22,6 +22,9 @@ namespace RocketLeagueReplayParserAPI
         /// </summary>
         public GameStats GameStat { get; protected set; }
 */
+
+       // public Type Type { get; protected set; }
+
         /// <summary>
         /// Type of the Property
         /// </summary>
