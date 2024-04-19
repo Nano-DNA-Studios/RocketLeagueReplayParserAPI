@@ -12,94 +12,10 @@ namespace RocketLeagueReplayParserAPI
     /// </summary>
     public class Replay
     {
-        #region Constants
-
-        /// <summary>
-        /// The Blue Team ID
-        /// </summary>
-        public const int BLUE_TEAM = 0;
-
-        /// <summary>
-        /// The Orange Team ID
-        /// </summary>
-        public const int ORANGE_TEAM = 1;
-
-        /// <summary>
-        /// Zero Goals Scored
-        /// </summary>
-        public const int ZERO_GOALS = 0;
-
-        /// <summary>
-        /// Title given to Unnamed Replays
-        /// </summary>
-        public const string UNNAMED_REPLAY = "Unnamed";
-
-        /// <summary>
-        /// The Car Object Class Name
-        /// </summary>
-        private const string CAR = "TAGame.Car_TA";
-
-        /// <summary>
-        /// The Ball Object Class Name
-        /// </summary>
-        private const string BALL = "TAGame.Ball_TA";
-
-        /// <summary>
-        /// The Player Name Property
-        /// </summary>
-        private const string PLAYER_NAME = "Engine.PlayerReplicationInfo:PlayerName";
-
-        /// <summary>
-        /// The Player Replication Info Property
-        /// </summary>
-        private const string PLAYER_REPLICATION_INFO = "Engine.Pawn:PlayerReplicationInfo";
-
-        /// <summary>
-        /// The Vehicle Property
-        /// </summary>
-        private const string VEHICLE = "TAGame.CarComponent_TA:Vehicle";
-
-        /// <summary>
-        /// The Ball Hit Property
-        /// </summary>
-        private const string BALL_HIT = "TAGame.Ball_TA:HitTeamNum"; //Or TAGame.GameEvent_Soccar_TA:bBallHasBeenHit
-
-        /// <summary>
-        /// The Rigid Body Property ID
-        /// </summary>
-        private const int RIGID_BODY = 42;
-
-        /// <summary>
-        /// The Player Stats Property Name
-        /// </summary>
-        private const string PLAYER_STATS = "PlayerStats";
-
-        /// <summary>
-        /// The Replay Name Property Name
-        /// </summary>
-        private const string REPLAY_NAME = "ReplayName";
-
-        /// <summary>
-        /// The Record FPS Property Name
-        /// </summary>
-        private const string RECORD_FPS = "RecordFPS";
-
-        /// <summary>
-        /// The Key for the Blue Team Score
-        /// </summary>
-        private const string BLUE_TEAM_SCORE = "Team0Score";
-
-        /// <summary>
-        /// The Key for the Orange Team Score
-        /// </summary>
-        private const string ORANGE_TEAM_SCORE = "Team1Score";
-
-        #endregion
-
         /// <summary>
         /// The Recording FPS of the Replay
         /// </summary>
-        public float RecordFPS => TryGetProperty<float>(RECORD_FPS, 30);
+        public float RecordFPS => ReplayProperties.TryGetProperty(GameProperties.RecordFPS, 30f);
 
         /// <summary>
         /// The Length of the Match in Seconds
@@ -109,7 +25,7 @@ namespace RocketLeagueReplayParserAPI
         /// <summary>
         /// The Replay Info Object
         /// </summary>
-        public PsyonixReplay _replayInfo;
+        public PsyonixReplay _replayInfo { get; set; }
 
         /// <summary>
         /// The Path to the File Being Parsed
@@ -117,29 +33,19 @@ namespace RocketLeagueReplayParserAPI
         private string _pathToFile;
 
         /// <summary>
-        /// Array of PlayerInfo Objects
-        /// </summary>
-        //public PlayerInfo[] Players { get; private set; }
-
-        /// <summary>
         /// The Blue Teams Number of Goals At the end of the replay
         /// </summary>
-        public int BlueTeamGoals => TryGetProperty(BLUE_TEAM_SCORE, ZERO_GOALS);
+        public int BlueTeamGoals => ReplayProperties.TryGetProperty(GameProperties.BlueTeamScore, GameProperties.ZeroGoals);
 
         /// <summary>
         /// The Orange Teams Number of Goals At the end of the replay
         /// </summary>
-        public int OrangeTeamGoals => TryGetProperty(ORANGE_TEAM_SCORE, ZERO_GOALS);
+        public int OrangeTeamGoals => ReplayProperties.TryGetProperty(GameProperties.OrangeTeamScore, GameProperties.ZeroGoals);
 
         /// <summary>
         /// The Name of the Replay set by the Player When Saved
         /// </summary>
-        public string ReplayName => TryGetProperty(REPLAY_NAME, UNNAMED_REPLAY);
-
-        /// <summary>
-        /// Mapping of Actor ID to Player Name
-        /// </summary>
-       // public Dictionary<uint, string> ActorIDToName { get; private set; }
+        public string ReplayName => ReplayProperties.TryGetProperty(GameProperties.ReplayName, GameProperties.UnamedReplay);
 
         /// <summary>
         /// List of all the Balls State in the Replay
@@ -151,8 +57,15 @@ namespace RocketLeagueReplayParserAPI
         /// </summary>
         public Dictionary<string, List<GameObjectState>> CarPositions { get; private set; }
 
-
+        /// <summary>
+        /// The Matches Roster, including all the Players and their Stats
+        /// </summary>
         public Roster MatchRoster { get; private set; }
+
+        /// <summary>
+        /// The Properties of the Replay
+        /// </summary>
+        public RocketLeaguePropertyDictionary ReplayProperties { get; private set; }
 
         /// <summary>
         /// Initializes the Replay Object from the given Path
@@ -160,47 +73,24 @@ namespace RocketLeagueReplayParserAPI
         /// <param name="path"> The Path to the Replay File </param>
         public Replay(string path)
         {
+            ReplayProperties = new RocketLeaguePropertyDictionary();
             _pathToFile = path;
             using (FileStream stream = File.Open(path, FileMode.Open))
             using (BinaryReader reader = new BinaryReader(stream))
                 _replayInfo = PsyonixReplay.Deserialize(reader);
 
+            foreach (string key in _replayInfo.Properties.Keys)
+            {
+                Property property = _replayInfo.Properties[key];
+                RocketLeagueProperty RLProperty = new RocketLeagueProperty(property.Name, property.Type, property.Value);
+                if (RLProperty.Name != GameProperties.None)
+                    ReplayProperties.Add(key, RLProperty);
+            }
+
             SetMatchLength();
             MatchRoster = new Roster(this);
-
             ExtractRigidBodies(_replayInfo);
-
-            MatchRoster.CalculateBallTouches(this);
-        }
-
-        /// <summary>
-        /// Tries to the Get the Property from the Replay Info Object <paramref name="defaultValue"/> if it is not found
-        /// </summary>
-        /// <typeparam name="T"> The Return Type of the Object </typeparam>
-        /// <param name="key"> The Key for the Value </param>
-        /// <param name="defaultValue"> The Default Value to Return if value is not Found </param>
-        /// <returns> The Value of the Property being searched, or <paramref name="defaultValue"/> if not found </returns>
-        private T TryGetProperty<T>(string key, T defaultValue)
-        {
-            if (_replayInfo.Properties.TryGetValue(key, out Property value))
-                return (T)value.Value;
-            else
-                return defaultValue;
-        }
-
-        /// <summary>
-        /// Extracts the Players from the Replay Info Object and Formats them into PlayerInfo Objects
-        /// </summary>
-        private PlayerInfo[] ExtractPlayers()
-        {
-            ArrayProperty playerStatsArray = (ArrayProperty)_replayInfo.Properties[PLAYER_STATS];
-            List<PropertyDictionary> playerStats = (List<PropertyDictionary>)playerStatsArray.Value;
-            List<PlayerInfo> players = new List<PlayerInfo>();
-
-            foreach (PropertyDictionary playerStat in playerStats)
-                players.Add(new PlayerInfo(playerStat));
-
-            return players.ToArray();
+            TouchCalculator.SetBallTouchStats(this);
         }
 
         /// <summary>
@@ -298,79 +188,6 @@ namespace RocketLeagueReplayParserAPI
             File.WriteAllText(fullFilePath, json);
         }
 
-       /* /// <summary>
-        /// Calculates the Ball Touches that Occur during the Replay and Assigns them to the Players 
-        /// </summary>
-        public void CalculateBallTouches()
-        {
-            TouchCalculator touchCalculator = new TouchCalculator(this);
-            List<BallTouch> ballTouches = touchCalculator.GetBallTouches();
-            Dictionary<string, List<BallTouch>> playerTouchDictionary = new Dictionary<string, List<BallTouch>>();
-
-            foreach (BallTouch ballTouch in ballTouches)
-            {
-                PlayerInfo? player = MatchRoster.GetAllPlayers().FirstOrDefault(player => player.PlayerName == ActorIDToName[ballTouch.ActorID]);
-
-                if (player == null)
-                    continue;
-
-                if (!playerTouchDictionary.ContainsKey(player.PlayerName))
-                    playerTouchDictionary.Add(player.PlayerName, new List<BallTouch>());
-
-                playerTouchDictionary[player.PlayerName].Add(ballTouch);
-            }
-
-            int blueTeamTouches = 0;
-            int orangeTeamTouches = 0;
-            float blueTeamPossessionTime = 0;
-            float orangeTeamPossessionTime = 0;
-
-            foreach (string playerName in playerTouchDictionary.Keys)
-            {
-                PlayerInfo? player = MatchRoster.GetAllPlayers().FirstOrDefault(player => player.PlayerName == playerName);
-
-                if (player == null)
-                    continue;
-
-                if (player.Team == BLUE_TEAM)
-                {
-                    blueTeamTouches += playerTouchDictionary[playerName].Count;
-                    blueTeamPossessionTime += playerTouchDictionary[playerName].Sum(touch => touch.TimeUntilNextTouch);
-                }
-                else
-                {
-                    orangeTeamTouches += playerTouchDictionary[playerName].Count;
-                    orangeTeamPossessionTime += playerTouchDictionary[playerName].Sum(touch => touch.TimeUntilNextTouch);
-                }
-
-                player.SetBallTouches(playerTouchDictionary[playerName]);
-            }
-
-            int touchTotal = blueTeamTouches + orangeTeamTouches;
-            float possessionTimeTotal = blueTeamPossessionTime + orangeTeamPossessionTime;
-
-            foreach (string playerName in playerTouchDictionary.Keys)
-            {
-                PlayerInfo? player = MatchRoster.GetAllPlayers().FirstOrDefault(player => player.PlayerName == playerName);
-
-                if (player == null)
-                    continue;
-
-                player.BallPossessionTime = playerTouchDictionary[playerName].Sum(touch => touch.TimeUntilNextTouch);
-
-                if (player.Team == BLUE_TEAM)
-                {
-                    player.BallTouchPossessionPercentage = 100 * (float)playerTouchDictionary[playerName].Count / blueTeamTouches;
-                    player.BallPossessionPercentage = 100 * player.BallPossessionTime / blueTeamPossessionTime;
-                }
-                else
-                {
-                    player.BallTouchPossessionPercentage = 100 * (float)playerTouchDictionary[playerName].Count / orangeTeamTouches;
-                    player.BallPossessionPercentage = 100 * player.BallPossessionTime / orangeTeamPossessionTime;
-                }
-            }
-        }*/
-
         /// <summary>
         /// Saves an Individual Frame of the Replay as a JSON File
         /// </summary>
@@ -396,45 +213,6 @@ namespace RocketLeagueReplayParserAPI
 
             string json = JsonConvert.SerializeObject(frame, settings);
             File.WriteAllText(fullFilePath, json);
-        }
-
-        /// <summary>
-        /// Extracts the Info necessary to map an Actor / GameObject to a Player Name
-        /// </summary>
-        /// <returns> A Dictionary Map of ActorID to Player Name </returns>
-        private Dictionary<uint, string> GetActorToPlayerMap()
-        {
-            Dictionary<uint, string> ActorToPlayerNameMap = new Dictionary<uint, string>();
-
-            Dictionary<uint, string> IDtoName = new Dictionary<uint, string>();
-
-            Dictionary<uint, int> ActorIDtoNameID = new Dictionary<uint, int>();
-
-            foreach (PsyonixFrame frame in _replayInfo.Frames)
-            {
-                foreach (ActorState actorState in frame.ActorStates)
-                {
-                    foreach (ActorStateProperty property in actorState.Properties.Values)
-                    {
-                        if (property.PropertyName == PLAYER_REPLICATION_INFO)
-                        {
-                            if (!ActorIDtoNameID.ContainsKey(actorState.Id))
-                                ActorIDtoNameID.Add(actorState.Id, ((ActiveActor)property.Data).ActorId);
-                        }
-
-                        if (property.PropertyName == PLAYER_NAME)
-                        {
-                            if (!IDtoName.ContainsKey(actorState.Id))
-                                IDtoName.Add(actorState.Id, (string)property.Data);
-                        }
-                    }
-                }
-            }
-
-            foreach (uint actorID in ActorIDtoNameID.Keys)
-                ActorToPlayerNameMap.Add(actorID, IDtoName[(uint)ActorIDtoNameID[actorID]]);
-
-            return ActorToPlayerNameMap;
         }
 
         /// <summary>
@@ -488,6 +266,9 @@ namespace RocketLeagueReplayParserAPI
             CarPositions = ReplayInterpolator.InterpolateAllFrames(carPositions);
         }
 
+        /// <summary>
+        /// Sets the Replays Match Length
+        /// </summary>
         private void SetMatchLength()
         {
             foreach (PsyonixFrame frame in _replayInfo.Frames)

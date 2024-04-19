@@ -106,7 +106,7 @@ namespace RocketLeagueReplayParserAPI
         /// </summary>
         public void CalculateBallTouches(Replay replay)
         {
-            TouchCalculator touchCalculator = new TouchCalculator(replay);
+           /* TouchCalculator touchCalculator = new TouchCalculator(replay);
             List<BallTouch> ballTouches = touchCalculator.GetBallTouches();
             Dictionary<string, List<BallTouch>> playerTouchDictionary = new Dictionary<string, List<BallTouch>>();
 
@@ -169,18 +169,18 @@ namespace RocketLeagueReplayParserAPI
                     player.PlayerProperties.Add(GameProperties.BallTouchPercentage, new RocketLeagueProperty(GameProperties.BallTouchPercentage, "float", 100 * (float)playerTouchDictionary[playerName].Count / blueTeamTouches));
                     player.PlayerProperties.Add(GameProperties.BallPossessionTimePercentage, new RocketLeagueProperty(GameProperties.BallPossessionTimePercentage, "float", 100 * player.BallPossessionTime / blueTeamPossessionTime));
 
-                   /* player.BallTouchPossessionPercentage = 100 * (float)playerTouchDictionary[playerName].Count / blueTeamTouches;
-                    player.BallPossessionPercentage = 100 * player.BallPossessionTime / blueTeamPossessionTime;*/
+                   *//* player.BallTouchPossessionPercentage = 100 * (float)playerTouchDictionary[playerName].Count / blueTeamTouches;
+                    player.BallPossessionPercentage = 100 * player.BallPossessionTime / blueTeamPossessionTime;*//*
                 }
                 else
                 {
                     player.PlayerProperties.Add(GameProperties.BallTouchPercentage, new RocketLeagueProperty(GameProperties.BallTouchPercentage, "float", 100 * (float)playerTouchDictionary[playerName].Count / orangeTeamTouches));
                     player.PlayerProperties.Add(GameProperties.BallPossessionTimePercentage, new RocketLeagueProperty(GameProperties.BallPossessionTimePercentage, "float", 100 * player.BallPossessionTime / orangeTeamPossessionTime));
 
-                    /*player.BallTouchPossessionPercentage = 100 * (float)playerTouchDictionary[playerName].Count / orangeTeamTouches;
-                    player.BallPossessionPercentage = 100 * player.BallPossessionTime / orangeTeamPossessionTime;*/
+                    *//*player.BallTouchPossessionPercentage = 100 * (float)playerTouchDictionary[playerName].Count / orangeTeamTouches;
+                    player.BallPossessionPercentage = 100 * player.BallPossessionTime / orangeTeamPossessionTime;*//*
                 }
-            }
+            }*/
         }
     }
 }

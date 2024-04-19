@@ -13,6 +13,11 @@ namespace RocketLeagueReplayParserAPI
         /// </summary>
         public const int RigidBody = 42;
 
+        /// <summary>
+        /// Zero Goals Scored
+        /// </summary>
+        public const int ZeroGoals = 0;
+
 
 
         public const int BlueTeamID = 0;
@@ -40,6 +45,9 @@ namespace RocketLeagueReplayParserAPI
 
 
 
+        public const string BlueTeamScore = "Team0Score";
+        public const string OrangeTeamScore = "Team1Score";
+
         public const string PlayerStats = "PlayerStats";
 
         /// <summary>
@@ -51,5 +59,35 @@ namespace RocketLeagueReplayParserAPI
         /// The Ball Object Class Name
         /// </summary>
         public const string Ball = "TAGame.Ball_TA";
+
+        /// <summary>
+        /// The Vehicle Property
+        /// </summary>
+        public const string Vehicle = "TAGame.CarComponent_TA:Vehicle";
+
+        /// <summary>
+        /// The Player Name Property
+        /// </summary>
+        public const string PlayerName = "Engine.PlayerReplicationInfo:PlayerName";
+
+        /// <summary>
+        /// The Player Replication Info Property
+        /// </summary>
+        public const string PlayerReplicationInfo = "Engine.Pawn:PlayerReplicationInfo";
+
+        /// <summary>
+        /// The Replay Name Property Name
+        /// </summary>
+        public const string ReplayName = "ReplayName";
+
+        /// <summary>
+        /// Title given to Unnamed Replays
+        /// </summary>
+        public const string UnamedReplay = "Unnamed";
+
+        /// <summary>
+        /// The Record FPS Property Name
+        /// </summary>
+        public const string RecordFPS = "RecordFPS";
     }
 }
