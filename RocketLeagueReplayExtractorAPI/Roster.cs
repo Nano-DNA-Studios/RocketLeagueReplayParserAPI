@@ -1,7 +1,6 @@
 ﻿using DNARocketLeagueReplayParser.ReplayStructure;
 using DNARocketLeagueReplayParser.ReplayStructure.Actors;
 using DNARocketLeagueReplayParser.ReplayStructure.Frames;
-using DNARocketLeagueReplayParser.ReplayStructure.UnrealEngineObjects;
 
 namespace RocketLeagueReplayParserAPI
 {
