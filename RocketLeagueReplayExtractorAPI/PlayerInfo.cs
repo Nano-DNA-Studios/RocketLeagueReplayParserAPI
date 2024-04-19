@@ -7,13 +7,10 @@ namespace RocketLeagueReplayParserAPI
     /// </summary>
     public class PlayerInfo
     {
-        private const string SCORE = "Score";
-        private const string SAVES = "Saves";
-        private const string GOALS = "Goals";
-        private const string ASSISTS = "Assists";
-        private const string NAME = "Name";
-        private const string SHOTS = "Shots";
-        private const string TEAM = "Team";
+        /// <summary>
+        /// The Stats that would be Displayed on the Scoreboard
+        /// </summary>
+        public static string[] DisplayStats { get; } = [GameProperties.Score, GameProperties.Goals, GameProperties.Assists, GameProperties.Saves, GameProperties.Shots, GameProperties.BallTouchCount, GameProperties.BallTouchPercentage, GameProperties.BallPossessionTime, GameProperties.BallPossessionTimePercentage];
 
         /// <summary>
         /// The ID assigned to the Player at the Start of the Match
@@ -23,63 +20,68 @@ namespace RocketLeagueReplayParserAPI
         /// <summary>
         /// The Name of the Player
         /// </summary>
-        public string PlayerName { get; private set; }
+        public string PlayerName => PlayerProperties.TryGetProperty(GameProperties.Name, "PlayerName");
 
         /// <summary>
         /// The Number of Points the Player got
         /// </summary>
-        public int Score { get; private set; }
+        public int Score => PlayerProperties.TryGetProperty(GameProperties.Score, 0);
 
         /// <summary>
         /// The Number of Goals the Player Scored 
         /// </summary>
-        public int Goals { get; private set; }
+        public int Goals => PlayerProperties.TryGetProperty(GameProperties.Goals, 0);
 
         /// <summary>
         /// The Number of Assists the Player got
         /// </summary>
-        public int Assists { get; private set; }
+        public int Assists => PlayerProperties.TryGetProperty(GameProperties.Assists, 0);
 
         /// <summary>
         /// The Number of Saves the Player got
         /// </summary>
-        public int Saves { get; private set; }
+        public int Saves => PlayerProperties.TryGetProperty(GameProperties.Saves, 0);
 
         /// <summary>
         /// The Number of Shots the Player took
         /// </summary>
-        public int Shots { get; private set; }
+        public int Shots => PlayerProperties.TryGetProperty(GameProperties.Shots, 0);
 
         //0 = Blue, 1 = Orange
         /// <summary>
         /// The Team ID the Player is on. 0 = Blue, 1 = Orange
         /// </summary>
-        public int Team { get; private set; }
+        public int Team => PlayerProperties.TryGetProperty(GameProperties.Team, 0);
 
         /// <summary>
         /// The Number of Touches the Player got
         /// </summary>
-        public int Touches => BallTouches.Count;
+        public int Touches => PlayerProperties.TryGetProperty(GameProperties.BallTouchCount, 0);
 
         /// <summary>
         /// List of all the Ball Touches the Player got with their Info
         /// </summary>
-        public List<BallTouch> BallTouches { get; private set; }
+        public List<BallTouch> BallTouches => PlayerProperties.TryGetProperty(GameProperties.BallTouches, new List<BallTouch>());
 
         /// <summary>
         /// The Percentage of Touches the Player got on the Ball compared to all Players
         /// </summary>
-        public float BallTouchPossessionPercentage { get; internal set; }
+        public float BallTouchPossessionPercentage => PlayerProperties.TryGetProperty(GameProperties.BallTouchPercentage, 0f);
 
         /// <summary>
         /// The Time the Player Possessed the Ball
         /// </summary>
-        public float BallPossessionTime { get; internal set; }
+        public float BallPossessionTime => PlayerProperties.TryGetProperty(GameProperties.BallPossessionTime, 0f);
 
         /// <summary>
         /// The Percentage of Time the Player Possessed the Ball compared to all Players
         /// </summary>
-        public float BallPossessionPercentage { get; internal set; }
+        public float BallPossessionTimePercentage => PlayerProperties.TryGetProperty(GameProperties.BallPossessionTimePercentage, 0f);
+
+        /// <summary>
+        /// The Players Rocket League Properties
+        /// </summary>
+        public RocketLeaguePropertyDictionary PlayerProperties { get; private set; }
 
 
         //Eventually support
@@ -97,9 +99,10 @@ namespace RocketLeagueReplayParserAPI
         /// <param name="playerName"> The Name of the Player </param>
         public PlayerInfo(int playerID, string playerName)
         {
+            PlayerProperties = new RocketLeaguePropertyDictionary();
+
             PlayerID = playerID;
-            PlayerName = playerName;
-            BallTouches = new List<BallTouch>();
+            PlayerProperties.Add(GameProperties.Name, new RocketLeagueProperty(GameProperties.Name, "string", playerName));
         }
 
         /// <summary>
@@ -108,14 +111,15 @@ namespace RocketLeagueReplayParserAPI
         /// <param name="playerStats"> The Property Dictionary containing the Players Stats </param>
         public PlayerInfo(PropertyDictionary playerStats)
         {
-            PlayerName = (string)playerStats[NAME].Value;
-            Score = (int)playerStats[SCORE].Value;
-            Goals = (int)playerStats[GOALS].Value;
-            Assists = (int)playerStats[ASSISTS].Value;
-            Saves = (int)playerStats[SAVES].Value;
-            Shots = (int)playerStats[SHOTS].Value;
-            Team = (int)playerStats[TEAM].Value;
-            BallTouches = new List<BallTouch>();
+            PlayerProperties = new RocketLeaguePropertyDictionary();
+
+            foreach (string key in playerStats.Keys)
+            {
+                Property property = playerStats[key];
+                RocketLeagueProperty RLProperty = new RocketLeagueProperty(property.Name, property.Type, property.Value);
+                if (RLProperty.Name != GameProperties.None)
+                    PlayerProperties.Add(key, RLProperty);
+            }
         }
 
         /// <summary>
@@ -124,7 +128,29 @@ namespace RocketLeagueReplayParserAPI
         /// <returns> Formatted info that would be Displayed on the Scoreboard</returns>
         public string[] GetScoreboardInfo()
         {
-            return [PlayerName, Score.ToString(), Goals.ToString(), Assists.ToString(), Saves.ToString(), Shots.ToString(), Touches.ToString(), BallTouchPossessionPercentage.ToString(), BallPossessionTime.ToString(), BallPossessionPercentage.ToString()];
+            List<string> scoreboardInfo = [PlayerName];
+
+            foreach (string stat in DisplayStats)
+            {
+                object value = PlayerProperties.TryGetProperty<object>(stat);
+
+                if (value == null)
+                    scoreboardInfo.Add("0");
+                else
+                    scoreboardInfo.Add(value.ToString());
+
+            }
+            return scoreboardInfo.ToArray();
+        }
+
+        /// <summary>
+        /// Returns a Boolean Flag indicating if the Stat Exists for the Player
+        /// </summary>
+        /// <param name="stat"> The Stat to check if it Exists </param>
+        /// <returns> True if the Player has the Stat, False if it doesn't </returns>
+        public bool StatExists(string stat)
+        {
+            return PlayerProperties.ContainsKey(stat);
         }
 
         /// <summary>
@@ -132,31 +158,12 @@ namespace RocketLeagueReplayParserAPI
         /// </summary>
         /// <param name="stat"> The Stat Type to get </param>
         /// <returns> The Game Stat Value </returns>
-        public float GetStat(GameStats stat)
+        public T GetStat<T>(string stat)
         {
-            switch (stat)
-            {
-                case GameStats.Score:
-                    return Score;
-                case GameStats.Goals:
-                    return Goals;
-                case GameStats.Assists:
-                    return Assists;
-                case GameStats.Saves:
-                    return Saves;
-                case GameStats.Shots:
-                    return Shots;
-                case GameStats.BallTouches:
-                    return Touches;
-                case GameStats.BallTouchPossession:
-                    return BallTouchPossessionPercentage;
-                case GameStats.BallPossessionTime:
-                    return BallPossessionTime;
-                case GameStats.BallPossessionTimePercentage:
-                    return BallPossessionPercentage;
+            if (!StatExists(stat))
+                throw new KeyNotFoundException($"Stat {stat} not found in the Player Info");
 
-                default: return 0;
-            }
+            return PlayerProperties.TryGetProperty<T>(stat);
         }
 
         /// <summary>
@@ -172,9 +179,17 @@ namespace RocketLeagueReplayParserAPI
         /// Sets all the BallTouches for the Player
         /// </summary>
         /// <param name="touches"></param>
-        public void SetBallTouches(List<BallTouch> touches)
+        /// <param name="teamTouches"> The Number of Touches the Team Got </param>
+        /// <param name="teamPossessionTime"> The Time the Team Possessed the Ball </param>
+        internal void SetBallTouches(List<BallTouch> touches, int teamTouches, float teamPossessionTime)
         {
-            BallTouches = touches;
+            float possessionTime = touches.Sum(touch => touch.TimeUntilNextTouch);
+
+            PlayerProperties.Add(GameProperties.BallTouches, new RocketLeagueProperty(GameProperties.BallTouches, touches.GetType().Name, touches));
+            PlayerProperties.Add(GameProperties.BallTouchCount, new RocketLeagueProperty(GameProperties.BallTouchCount, "int", touches.Count));
+            PlayerProperties.Add(GameProperties.BallPossessionTime, new RocketLeagueProperty(GameProperties.BallPossessionTime, "float", possessionTime));
+            PlayerProperties.Add(GameProperties.BallTouchPercentage, new RocketLeagueProperty(GameProperties.BallTouchPercentage, "float", 100 * (float)Touches / teamTouches));
+            PlayerProperties.Add(GameProperties.BallPossessionTimePercentage, new RocketLeagueProperty(GameProperties.BallPossessionTimePercentage, "float", 100 * BallPossessionTime / teamPossessionTime));
         }
     }
 }

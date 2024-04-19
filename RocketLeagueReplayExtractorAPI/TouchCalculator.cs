@@ -1,4 +1,5 @@
 ﻿using DNARocketLeagueReplayParser.ReplayStructure.UnrealEngineObjects;
+using System.Runtime.CompilerServices;
 
 namespace RocketLeagueReplayParserAPI
 {
@@ -33,14 +34,39 @@ namespace RocketLeagueReplayParserAPI
         #region Properties
 
         /// <summary>
-        /// The Replay to Calculate the Ball Touches for
+        /// The List of the States of the Ball over the Course of the Match, Ordered by Frame Number
         /// </summary>
-        private Replay _replay { get; set; }
+        private List<GameObjectState> _ballPositions { get; set; }
+
+        /// <summary>
+        /// The Length of the Match in Seconds
+        /// </summary>
+        private float _matchLength { get; set; }
+
+        /// <summary>
+        /// Dictionary of the list of Car Positions by Player Name
+        /// </summary>
+        private Dictionary<string, List<GameObjectState>> _carPositions { get; set; }
+
+        /// <summary>
+        /// Reference to the Match Roster
+        /// </summary>
+        private PlayerInfo[] _players { get; set; }
+
+        /// <summary>
+        /// Mapping of the Actor ID to the Player Name
+        /// </summary>
+        private Dictionary<uint, string> _actorIDToName { get; set; }
 
         /// <summary>
         /// Refromated Car Positions by Frame Number
         /// </summary>
         private Dictionary<int, List<GameObjectState>> _carPositionsByFrame { get; set; }
+
+        /// <summary>
+        /// Dictionary mapping the Player to all it's Ball Touches in the Replay
+        /// </summary>
+        private Dictionary<string, List<BallTouch>> _playerTouchDictionary { get; set; }
 
         #endregion
 
@@ -48,13 +74,16 @@ namespace RocketLeagueReplayParserAPI
         /// <summary>
         /// Default Constructor
         /// </summary>
-        /// <param name="ballPosition"> The Ball Positions </param>
-        /// <param name="carPositions"> The Car Positions </param>
+        /// <param name="replay"> The Replay to Analyze </param>
         public TouchCalculator(Replay replay)
         {
-            _replay = replay;
-
-            SetCarPositionsByFrameDictionary();
+            _carPositions = replay.CarPositions;
+            _ballPositions = replay.BallPositions;
+            _matchLength = replay.MatchLength;
+            _players = replay.MatchRoster.GetAllPlayers().ToArray();
+            _actorIDToName = replay.MatchRoster.ActorIDToName;
+            _carPositionsByFrame = GetCarPositionsByFrameDictionary();
+            _playerTouchDictionary = GetPlayerTouchDictionary();
         }
 
         #endregion
@@ -64,11 +93,11 @@ namespace RocketLeagueReplayParserAPI
         /// <summary>
         /// Sets the Dictionary tha reformats Car Positions by Frame Number
         /// </summary>
-        private void SetCarPositionsByFrameDictionary()
+        private Dictionary<int, List<GameObjectState>> GetCarPositionsByFrameDictionary()
         {
             Dictionary<int, List<GameObjectState>> carPositionsByFrame = new Dictionary<int, List<GameObjectState>>();
 
-            foreach (KeyValuePair<string, List<GameObjectState>> carPosition in _replay.CarPositions)
+            foreach (KeyValuePair<string, List<GameObjectState>> carPosition in _carPositions)
             {
                 foreach (GameObjectState gameObjectState in carPosition.Value)
                 {
@@ -79,7 +108,7 @@ namespace RocketLeagueReplayParserAPI
                 }
             }
 
-            _carPositionsByFrame = carPositionsByFrame;
+            return carPositionsByFrame;
         }
 
         /// <summary>
@@ -136,28 +165,24 @@ namespace RocketLeagueReplayParserAPI
         /// <returns> The Maximum Acceleration Values in the next few Frames </returns>
         private double GetMaxAcceleration(int index)
         {
-            List<double> speeds = _replay.BallPosition.Skip(index).Take(ACCELERATION_FRAMES).Select(ball => ball.RigidBody.GetVelocityKMH()).ToList();
+            List<double> speeds = _ballPositions.Skip(index).Take(ACCELERATION_FRAMES).Select(ball => ball.RigidBody.GetVelocityKMH()).ToList();
             List<double> accelerations = speeds.Skip(1).Zip(speeds, (first, second) => first - second).ToList();
 
             return Math.Abs(accelerations.DefaultIfEmpty(0).Max());
         }
 
-        #endregion
-
-        #region Public Methods
-
         /// <summary>
         /// Gets all the Ball Touches that occur in the Replay File
         /// </summary>
         /// <returns> A List of all the Ball Touches that Occur in the Replay </returns>
-        public List<BallTouch> GetBallTouches()
+        private List<BallTouch> GetBallTouches()
         {
             List<BallTouch> ballTouches = new List<BallTouch>();
 
             double lastMaxAcceleration = 0;
-            for (int i = 0; i < _replay.BallPosition.Count; i++)
+            for (int i = 0; i < _ballPositions.Count; i++)
             {
-                GameObjectState ballState = _replay.BallPosition[i];
+                GameObjectState ballState = _ballPositions[i];
                 (double minDistance, GameObjectState closestCar) = GetClosestCar(ballState);
                 double maxAcceleration = GetMaxAcceleration(i);
 
@@ -193,9 +218,103 @@ namespace RocketLeagueReplayParserAPI
             for (int i = 0; i < ballTouches.Count - 2; i++)
                 ballTouches[i].TimeUntilNextTouch = ballTouches[i + 1].Time - ballTouches[i].Time;
 
-            ballTouches[ballTouches.Count - 1].TimeUntilNextTouch = _replay.MatchLength - ballTouches[ballTouches.Count - 1].Time;
+            ballTouches[ballTouches.Count - 1].TimeUntilNextTouch = _matchLength - ballTouches[ballTouches.Count - 1].Time;
 
             return ballTouches;
+        }
+
+        /// <summary>
+        /// Calculates and Returns a Dictionary mapping the Player to all it's Ball Touches in the Replay
+        /// </summary>
+        /// <returns> Dictionary mapping a Players Name to it's associated Ball Touches </returns>
+        private Dictionary<string, List<BallTouch>> GetPlayerTouchDictionary()
+        {
+            Dictionary<string, List<BallTouch>> playerTouchDictionary = new Dictionary<string, List<BallTouch>>();
+
+            foreach (BallTouch ballTouch in GetBallTouches())
+            {
+                PlayerInfo? player = _players.FirstOrDefault(player => player.PlayerName == _actorIDToName[ballTouch.ActorID]);
+
+                if (player == null)
+                    continue;
+
+                if (!playerTouchDictionary.ContainsKey(player.PlayerName))
+                    playerTouchDictionary.Add(player.PlayerName, new List<BallTouch>());
+
+                playerTouchDictionary[player.PlayerName].Add(ballTouch);
+            }
+
+            return playerTouchDictionary;
+        }
+
+        /// <summary>
+        /// Sets the Player Stats for the Team
+        /// </summary>
+        /// <param name="teamID"> The ID of the Team </param>
+        private void SetPlayerStats(int teamID)
+        {
+            (int teamTouches, float teamPossessionTime) = GetTeamStats(teamID);
+
+            foreach (string playerName in _playerTouchDictionary.Keys)
+            {
+                PlayerInfo? player = _players.FirstOrDefault(player => player.PlayerName == playerName);
+
+                if (player == null)
+                    continue;
+
+                if (player.Team == teamID)
+                    player.SetBallTouches(_playerTouchDictionary[playerName], teamTouches, teamPossessionTime);
+            }
+        }
+
+        /// <summary>
+        /// Gets the Team Touch and Possession Time Stats
+        /// </summary>
+        /// <param name="teamID"> The ID of the Team to get the Stats from </param>
+        /// <returns> The Number of Touches the Team got and the Total Possession Time in Seconds </returns>
+        private (int teamTouches, float teamPossessionTime) GetTeamStats(int teamID)
+        {
+            int teamTouches = 0;
+            float teamPossessionTime = 0;
+            foreach (string playerName in _playerTouchDictionary.Keys)
+            {
+                PlayerInfo? player = _players.FirstOrDefault(player => player.PlayerName == playerName);
+
+                if (player == null)
+                    continue;
+
+                if (player.Team == teamID)
+                {
+                    teamTouches += _playerTouchDictionary[playerName].Count;
+                    teamPossessionTime += _playerTouchDictionary[playerName].Sum(touch => touch.TimeUntilNextTouch);
+                }
+            }
+
+            return (teamTouches, teamPossessionTime);
+        }
+
+        #endregion
+
+        #region Public Methods
+
+        /// <summary>
+        /// Sets the Ball Touch Player Stats for both Teams
+        /// </summary>
+        public void SetBallTouchStats()
+        {
+            SetPlayerStats(GameProperties.BlueTeamID);
+            SetPlayerStats(GameProperties.OrangeTeamID);
+        }
+
+        /// <summary>
+        /// Sets the Ball Touch Stats for each Player in the Replay
+        /// </summary>
+        /// <param name="replay"> The Replay to analyze </param>
+        public static void SetBallTouchStats(Replay replay)
+        {
+            TouchCalculator calculator = new TouchCalculator(replay);
+
+            calculator.SetBallTouchStats();
         }
 
         #endregion
