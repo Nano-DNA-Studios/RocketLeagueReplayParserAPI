@@ -93,7 +93,6 @@ namespace RocketLeagueReplayParserAPI
         /// </summary>
         public RocketLeaguePropertyDictionary PlayerProperties { get; private set; }
 
-
         //Eventually support
         //Clears
         //Demos
