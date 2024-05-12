@@ -224,6 +224,9 @@ namespace RocketLeagueReplayParserAPI
                 possessionTime = 0;
             }
 
+            if (possessionTimes.Count == 0)
+                return 0;
+
             return possessionTimes.Average();
         }
     }
