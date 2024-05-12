@@ -10,12 +10,12 @@ namespace RocketLeagueReplayParserAPI
     /// <summary>
     /// Represents a Rocket League Replay Object
     /// </summary>
-    public class Replay
+    public class Replay : RLAnalysisObject<Replay>
     {
         /// <summary>
         /// The Recording FPS of the Replay
         /// </summary>
-        public float RecordFPS => ReplayProperties.TryGetProperty(GameProperties.RecordFPS, 30f);
+        public float RecordFPS => Properties.TryGetProperty(GameProperties.RecordFPS, 30f);
 
         /// <summary>
         /// The Length of the Match in Seconds
@@ -35,17 +35,17 @@ namespace RocketLeagueReplayParserAPI
         /// <summary>
         /// The Blue Teams Number of Goals At the end of the replay
         /// </summary>
-        public int BlueTeamGoals => ReplayProperties.TryGetProperty(GameProperties.BlueTeamScore, GameProperties.ZeroGoals);
+        public int BlueTeamGoals => Properties.TryGetProperty(GameProperties.BlueTeamScore, GameProperties.ZeroGoals);
 
         /// <summary>
         /// The Orange Teams Number of Goals At the end of the replay
         /// </summary>
-        public int OrangeTeamGoals => ReplayProperties.TryGetProperty(GameProperties.OrangeTeamScore, GameProperties.ZeroGoals);
+        public int OrangeTeamGoals => Properties.TryGetProperty(GameProperties.OrangeTeamScore, GameProperties.ZeroGoals);
 
         /// <summary>
         /// The Name of the Replay set by the Player When Saved
         /// </summary>
-        public string ReplayName => ReplayProperties.TryGetProperty(GameProperties.ReplayName, GameProperties.UnamedReplay);
+        public string ReplayName => Properties.TryGetProperty(GameProperties.ReplayName, GameProperties.UnamedReplay);
 
         /// <summary>
         /// List of all the Balls State in the Replay
@@ -63,17 +63,12 @@ namespace RocketLeagueReplayParserAPI
         public Roster MatchRoster { get; private set; }
 
         /// <summary>
-        /// The Properties of the Replay
-        /// </summary>
-        public RocketLeaguePropertyDictionary ReplayProperties { get; private set; }
-
-        /// <summary>
         /// Initializes the Replay Object from the given Path
         /// </summary>
         /// <param name="path"> The Path to the Replay File </param>
         public Replay(string path)
         {
-            ReplayProperties = new RocketLeaguePropertyDictionary();
+            Properties = new RocketLeaguePropertyDictionary();
             _pathToFile = path;
             using (FileStream stream = File.Open(path, FileMode.Open))
             using (BinaryReader reader = new BinaryReader(stream))
@@ -84,7 +79,7 @@ namespace RocketLeagueReplayParserAPI
                 Property property = _replayInfo.Properties[key];
                 RocketLeagueProperty RLProperty = new RocketLeagueProperty(property.Name, property.Type, property.Value);
                 if (RLProperty.Name != GameProperties.None)
-                    ReplayProperties.Add(key, RLProperty);
+                    Properties.Add(key, RLProperty);
             }
 
             SetMatchLength();

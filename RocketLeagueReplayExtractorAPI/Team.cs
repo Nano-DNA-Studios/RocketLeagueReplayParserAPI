@@ -6,14 +6,16 @@ namespace RocketLeagueReplayParserAPI
     /// <summary>
     /// Represents a Team in a Rocket League Match
     /// </summary>
-    public class Team
+    public class Team : RLAnalysisObject<Team>
     {
-
         /// <summary>
         /// The ID of the Team being Represented
         /// </summary>
-        public int TeamID => TeamProperties.TryGetProperty(GameProperties.Team, 0);
+        public int TeamID => Properties.TryGetProperty(GameProperties.Team, 0);
 
+        /// <summary>
+        /// The Name of the Team based on the Team ID (0 = Blue, 1 = Orange)
+        /// </summary>
         public string TeamName => TeamID == 0 ? GameProperties.BlueTeam : GameProperties.OrangeTeam;
 
         /// <summary>
@@ -22,20 +24,15 @@ namespace RocketLeagueReplayParserAPI
         public PlayerInfo[] Players { get; private set; }
 
         /// <summary>
-        /// The Properties of the Team
-        /// </summary>
-        public RocketLeaguePropertyDictionary TeamProperties { get; private set; }
-
-        /// <summary>
         /// Default Constructor
         /// </summary>
         /// <param name="replay"></param>
         /// <param name="teamID"></param>
         public Team(PsyonixReplay replay, int teamID)
         {
-            TeamProperties = new RocketLeaguePropertyDictionary();
+            Properties = new RocketLeaguePropertyDictionary();
 
-            TeamProperties.Add(GameProperties.Team, new RocketLeagueProperty(GameProperties.Team, "int", teamID));
+            Properties.Add(GameProperties.Team, new RocketLeagueProperty(GameProperties.Team, "int", teamID));
             Players = ExtractPlayers(replay);
         }
 
@@ -54,11 +51,11 @@ namespace RocketLeagueReplayParserAPI
             {
                 try
                 {
-                    statValue += player.PlayerProperties.TryGetProperty<float>(stat);
+                    statValue += player.Properties.TryGetProperty<float>(stat);
                 }
                 catch (Exception e)
                 {
-                    statValue += (float)player.PlayerProperties.TryGetProperty<int>(stat);
+                    statValue += (float)player.Properties.TryGetProperty<int>(stat);
                 }
             }
 

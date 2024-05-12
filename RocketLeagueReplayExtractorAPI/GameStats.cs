@@ -25,11 +25,6 @@ namespace RocketLeagueReplayParserAPI
 
         Demolitions,
         
-
-
         Turnovers,
     }
-
-    
-
 }

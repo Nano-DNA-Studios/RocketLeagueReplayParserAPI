@@ -1,10 +1,4 @@
-﻿using DNARocketLeagueReplayParser.ReplayStructure.Mapping;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
+﻿
 namespace RocketLeagueReplayParserAPI
 {
     /// <summary>
@@ -13,25 +7,17 @@ namespace RocketLeagueReplayParserAPI
     public class RocketLeagueProperty
     {
         /// <summary>
-        /// Name of the Property
+        /// Name of the <see cref="RocketLeagueProperty"/>
         /// </summary>
         public string Name { get; protected set; }
-/*
-        /// <summary>
-        /// Associated Game Stat of the Property
-        /// </summary>
-        public GameStats GameStat { get; protected set; }
-*/
-
-       // public Type Type { get; protected set; }
 
         /// <summary>
-        /// Type of the Property
+        /// Type of the <see cref="RocketLeagueProperty"/>
         /// </summary>
         public string Type { get; protected set; }
 
         /// <summary>
-        /// Value of the Property
+        /// Value of the <see cref="RocketLeagueProperty"/>
         /// </summary>
         public object Value
         {
@@ -39,7 +25,7 @@ namespace RocketLeagueReplayParserAPI
         }
 
         /// <summary>
-        /// Default Constructor
+        /// Default Constructor of the <see cref="RocketLeagueProperty"/>
         /// </summary>
         /// <param name="name"> The Name of the Property </param>
         /// <param name="type"> The Value Type of the Property </param>
@@ -50,21 +36,5 @@ namespace RocketLeagueReplayParserAPI
             Type = type;
             Value = value;
         }
-
-/*
-        /// <summary>
-        /// Default Constructor
-        /// </summary>
-        /// <param name="name"> The Name of the Property </param>
-        /// <param name="type"> The Value Type of the Property </param>
-        /// <param name="value"> The Value of the Property </param>
-        /// <param name="gameStat"> The Game Stat Associated with the Property </param>
-        public RocketLeagueProperty(string name, string type, object value, GameStats gameStat)
-        {
-            Name = name;
-            Type = type;
-            Value = value;
-            GameStat = gameStat;
-        }*/
     }
 }

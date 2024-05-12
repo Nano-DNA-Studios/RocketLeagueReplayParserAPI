@@ -1,6 +1,4 @@
 ﻿
-using System.Runtime.InteropServices;
-
 namespace RocketLeagueReplayParserAPI
 {
     public class RocketLeaguePropertyDictionary : Dictionary<string, RocketLeagueProperty>
