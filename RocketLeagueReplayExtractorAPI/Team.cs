@@ -36,7 +36,6 @@ namespace RocketLeagueReplayParserAPI
             Players = ExtractPlayers(replay);
         }
 
-
         /// <summary>
         /// Gets the Teams Stat Value 
         /// </summary>
