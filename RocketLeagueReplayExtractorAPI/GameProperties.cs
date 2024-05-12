@@ -43,6 +43,8 @@ namespace RocketLeagueReplayParserAPI
         public const string BallPossessionTime = "Ball Possession Time";
         public const string BallPossessionTimePercentage = "Ball Possession Percentage";
 
+        public const string AverageBallPossessionTime = "Average Ball Possession Time";
+
 
 
         public const string BlueTeamScore = "Team0Score";

@@ -1,7 +1,6 @@
 ﻿using DNARocketLeagueReplayParser.ReplayStructure;
 using DNARocketLeagueReplayParser.ReplayStructure.Actors;
 using DNARocketLeagueReplayParser.ReplayStructure.Frames;
-using DNARocketLeagueReplayParser.ReplayStructure.UnrealEngineObjects;
 
 namespace RocketLeagueReplayParserAPI
 {
@@ -17,9 +16,14 @@ namespace RocketLeagueReplayParserAPI
         /// </summary>
         private const string PLAYER_REPLICATION_INFO = "Engine.Pawn:PlayerReplicationInfo";
 
-
+        /// <summary>
+        /// Gets the Blue Team from the Game Roster
+        /// </summary>
         public Team BlueTeam => RosterProperties.TryGetProperty<Team>(GameProperties.BlueTeam);
 
+        /// <summary>
+        /// Gets the Orcange Team from the Game Roster
+        /// </summary>
         public Team OrangeTeam => RosterProperties.TryGetProperty<Team>(GameProperties.OrangeTeam);
 
         /// <summary>
@@ -37,9 +41,15 @@ namespace RocketLeagueReplayParserAPI
         /// </summary>
         public PlayerInfo[] AllPlayers { get; private set; }
 
-
+        /// <summary>
+        /// Properties of the Roster
+        /// </summary>
         public RocketLeaguePropertyDictionary RosterProperties { get; private set; }
 
+        /// <summary>
+        /// Default Constructor for the Roster
+        /// </summary>
+        /// <param name="replay"> The Replay File </param>
         public Roster(Replay replay)
         {
             RosterProperties = new RocketLeaguePropertyDictionary();
@@ -52,6 +62,10 @@ namespace RocketLeagueReplayParserAPI
             RosterProperties.Add(GameProperties.OrangeTeam, new RocketLeagueProperty(GameProperties.OrangeTeam, "Team", new Team(replay._replayInfo, GameProperties.OrangeTeamID)));
         }
 
+        /// <summary>
+        /// Returns all the Players in the Match
+        /// </summary>
+        /// <returns> An IEnumrable of all the Players in the Match </returns>
         public IEnumerable<PlayerInfo> GetAllPlayers()
         {
             List<PlayerInfo> players = new List<PlayerInfo>();
